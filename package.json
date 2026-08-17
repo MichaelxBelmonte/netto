@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "check": "tsc -b --pretty false",
     "data:update": "node scripts/build-tax-data.mjs",
+    "map:update": "node scripts/build-map-data.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

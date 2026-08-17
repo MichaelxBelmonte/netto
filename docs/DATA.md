@@ -22,6 +22,7 @@ La pipeline usa esclusivamente file istituzionali:
 1. [CSV MEF addizionali comunali 2026](https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/download/download.php?anno=2026)
 2. [CSV MEF addizionali comunali 2025](https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/download/download.php?anno=2025)
 3. [CSV MEF addizionali regionali 2026](https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/addregirpef/download/download.php?anno=2026&tipo=reg)
+4. [Confini amministrativi generalizzati ISTAT al 1° gennaio 2026](https://www.istat.it/notizia/confini-delle-unita-amministrative-a-fini-statistici-al-1-gennaio-2018-2/)
 
 Il [MEF documenta il formato](https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/download/tabella.htm), i valori `FLAG_NUOVA` e il significato di `0*`. Prima del 20 dicembre, `0*` può indicare che la delibera dell’anno non è ancora pubblicata; il prototipo non lo interpreta automaticamente come aliquota zero.
 
@@ -48,6 +49,20 @@ Output:
 
 - `src/data/municipal-tax-2026.json`
 - `src/data/tax-data-meta.json`
+
+## Geografia della mappa
+
+`scripts/build-map-data.mjs` scarica il pacchetto generalizzato ISTAT 2026, usa il livello provinciale e delle città metropolitane, lo riproietta da UTM 32N a WGS84 e conserva l’8% dei vertici con mantenimento delle forme. Il risultato contiene 110 aree e viene salvato in `src/data/italy-provinces-2026.json`.
+
+Il livello provinciale consente di trattare separatamente le Province autonome di Trento e Bolzano, che hanno regole fiscali regionali diverse. Il colore di ogni area rappresenta la mediana delle addizionali regionali e comunali dei record MEF collegati, ricalcolata nel browser sulla RAL corrente.
+
+Nel 2026 i confini ISTAT della Sardegna riflettono il nuovo assetto provinciale, mentre alcuni record fiscali MEF usano ancora codici territoriali precedenti. Quando il join provinciale non è omogeneo, l’interfaccia mantiene il perimetro geografico ma filtra correttamente a livello regionale, senza inventare una corrispondenza tra codici.
+
+Rigenerazione:
+
+```bash
+npm run map:update
+```
 
 ## Politica sui casi speciali
 

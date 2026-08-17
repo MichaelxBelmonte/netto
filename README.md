@@ -13,6 +13,8 @@ Il progetto nasce per il task Product Builder di Jet HR. La scelta distintiva è
 - applica le regole 2026 delle 21 giurisdizioni regionali italiane
 - espone contributi INPS, imponibile, IRPEF, addizionali e benefici fiscali
 - confronta la stessa RAL tra città e rende visibile l’effetto della fiscalità locale
+- offre un atlante fiscale interattivo, visibile anche senza aver scelto un Comune
+- permette di filtrare un’area e applicare un Comune direttamente dalla mappa
 - mostra quanto resta dei successivi 1.000 € lordi
 - collega norme, dataset e scheda del Comune selezionato
 - funziona in italiano e inglese, con un flusso mobile dedicato
@@ -61,12 +63,20 @@ Per rigenerare lo snapshot comunale dai CSV ufficiali:
 npm run data:update
 ```
 
+Per rigenerare i confini geografici dal pacchetto ufficiale ISTAT:
+
+```bash
+npm run map:update
+```
+
 ## Architettura
 
 - `src/lib/tax.ts`: motore nazionale, funzione pura senza dipendenze dalla UI
 - `src/lib/localTaxes.ts`: aliquote regionali, ricerca e calcolo comunale
-- `src/data/`: snapshot compatto e metadati di provenienza
+- `src/components/TaxMap.tsx`: proiezione SVG, distribuzione e selezione territoriale
+- `src/data/`: snapshot fiscali, metadati e confini ISTAT semplificati
 - `scripts/build-tax-data.mjs`: download, normalizzazione, fallback e quality flags
+- `scripts/build-map-data.mjs`: download, riproiezione e semplificazione dei confini
 - `src/lib/*.test.ts`: test di soglie nazionali, eccezioni regionali e cambio residenza
 
 React e TypeScript gestiscono l’interfaccia; Vite e Vitest coprono build e test. Tutti i dati restano nel browser: la ricerca del Comune non invia la RAL a un backend.
@@ -79,6 +89,7 @@ React e TypeScript gestiscono l’interfaccia; Vite e Vitest coprono build e tes
 - [MEF — registro delle addizionali comunali](https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/download/tabella.htm)
 - [MEF — addizionali regionali 2026](https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/addregirpef/download/tabella.htm)
 - [ISTAT — codici delle unità amministrative](https://www.istat.it/classificazione/codici-dei-comuni-delle-province-e-delle-regioni/)
+- [ISTAT — confini amministrativi al 1° gennaio 2026](https://www.istat.it/notizia/confini-delle-unita-amministrative-a-fini-statistici-al-1-gennaio-2018-2/)
 
 ## Brand
 

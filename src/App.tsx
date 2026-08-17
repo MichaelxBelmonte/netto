@@ -2,6 +2,8 @@ import {
   type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
+  lazy,
+  Suspense,
   useEffect,
   useId,
   useMemo,
@@ -25,6 +27,10 @@ import {
   calculateSalaryProjection,
   type SalaryProjection,
 } from './lib/tax'
+
+const TaxMap = lazy(() =>
+  import('./components/TaxMap').then((module) => ({ default: module.TaxMap })),
+)
 
 const EXAMPLE_SALARIES = [25_000, 35_000, 50_000]
 const COMPARISON_CITY_CODES = ['F205', 'H501', 'F839', 'L219', 'A944', 'G273']
@@ -59,12 +65,17 @@ const SOURCE_LINKS = [
     meta: 'Circolare INPS n. 6/2026',
     href: 'https://www.inps.it/it/it/inps-comunica/atti/circolari-messaggi-e-normativa/dettaglio.circolari-e-messaggi.2026.01.circolare-numero-6-del-30-01-2026_15151.html',
   },
+  {
+    title: { it: 'Confini amministrativi 2026', en: '2026 administrative boundaries' },
+    meta: 'ISTAT · 110 aree provinciali',
+    href: 'https://www.istat.it/notizia/confini-delle-unita-amministrative-a-fini-statistici-al-1-gennaio-2018-2/',
+  },
 ] as const
 
 const COPY = {
   it: {
     navigation: 'Navigazione principale',
-    toolsNav: 'Scenari',
+    toolsNav: 'Atlante',
     detailNav: 'Dettaglio',
     sourcesNav: 'Fonti',
     language: 'Cambia lingua',
@@ -84,10 +95,16 @@ const COPY = {
     salaryAria: 'Seleziona la retribuzione annua lorda',
     salaryHelp: 'RAL ammessa da 15.000 € a 120.000 €',
     examples: 'Esempi',
-    residence: 'Residenza fiscale',
-    municipalitySearch: 'Cerca un Comune',
+    residence: 'Comune di residenza fiscale',
+    municipalitySearch: 'Digita il tuo Comune',
+    municipalityAction: 'Cerca',
     municipalityAria: 'Cerca e seleziona il Comune di residenza fiscale',
     noMunicipality: 'Nessun Comune trovato',
+    municipalityPrompt:
+      'Cerca tra ' +
+      new Intl.NumberFormat('it-IT').format(TAX_DATA_META.municipalities) +
+      ' voci fiscali MEF',
+    municipalityRequired: 'Seleziona un Comune dai risultati.',
     sourceYear: 'regola MEF',
     payPeriods: 'Mensilità',
     calculate: 'Calcola il netto',
@@ -103,15 +120,16 @@ const COPY = {
     contributions: 'INPS',
     benefits: 'Benefici fiscali',
     resultNote: 'Media annuale: le singole buste paga possono variare.',
+    emptyResult: 'Scegli il Comune e calcola.',
     nextThousand: 'Prossimi 1.000 € lordi',
     netPerYear: 'netti / anno',
     publishedRule: 'pubblicata',
     fallbackRule: 'fallback',
     pendingRule: 'dato in aggiornamento',
     specialRule: 'caso speciale',
-    officialMunicipalSource: 'Apri la scheda MEF del Comune',
-    toolsTitle: 'Scenari reali',
-    toolsIntro: 'La stessa RAL cambia con residenza e aliquote locali.',
+    toolsTitle: 'Atlante fiscale.',
+    toolsIntro: 'Esplora l’Italia e cambia Comune direttamente dalla mappa.',
+    mapLoading: 'Caricamento della mappa fiscale…',
     live: 'Live',
     cityCompareTitle: 'Confronta città',
     cityCompareDescription:
@@ -177,7 +195,7 @@ const COPY = {
   },
   en: {
     navigation: 'Main navigation',
-    toolsNav: 'Scenarios',
+    toolsNav: 'Atlas',
     detailNav: 'Breakdown',
     sourcesNav: 'Sources',
     language: 'Change language',
@@ -197,10 +215,16 @@ const COPY = {
     salaryAria: 'Select gross annual salary',
     salaryHelp: 'Supported gross salary from €15,000 to €120,000',
     examples: 'Examples',
-    residence: 'Tax residence',
-    municipalitySearch: 'Search municipality',
+    residence: 'Municipality of tax residence',
+    municipalitySearch: 'Type your municipality',
+    municipalityAction: 'Search',
     municipalityAria: 'Search and select the municipality of tax residence',
     noMunicipality: 'No municipality found',
+    municipalityPrompt:
+      'Search ' +
+      new Intl.NumberFormat('en-IE').format(TAX_DATA_META.municipalities) +
+      ' MEF tax records',
+    municipalityRequired: 'Select a municipality from the results.',
     sourceYear: 'MEF rule',
     payPeriods: 'Pay periods',
     calculate: 'Calculate net pay',
@@ -216,15 +240,16 @@ const COPY = {
     contributions: 'INPS',
     benefits: 'Tax benefits',
     resultNote: 'Annual average: individual payslips may vary.',
+    emptyResult: 'Choose your municipality and calculate.',
     nextThousand: 'Next €1,000 gross',
     netPerYear: 'net / year',
     publishedRule: 'published',
     fallbackRule: 'fallback',
     pendingRule: 'data being updated',
     specialRule: 'special case',
-    officialMunicipalSource: 'Open the municipality’s MEF record',
-    toolsTitle: 'Real scenarios',
-    toolsIntro: 'The same gross salary changes with local tax residence.',
+    toolsTitle: 'Tax atlas.',
+    toolsIntro: 'Explore Italy and change municipality directly from the map.',
+    mapLoading: 'Loading the tax map…',
     live: 'Live',
     cityCompareTitle: 'Compare cities',
     cityCompareDescription:
@@ -305,15 +330,18 @@ function MunicipalityPicker({
   value,
   language,
   copy,
+  error,
   onChange,
 }: {
-  value: Municipality
+  value: Municipality | null
   language: Language
   copy: Copy
+  error?: string
   onChange: (municipality: Municipality) => void
 }) {
   const listId = useId()
-  const displayValue = value.n + ' (' + value.p + ')'
+  const errorId = listId + '-error'
+  const displayValue = value ? value.n + ' (' + value.p + ')' : ''
   const [query, setQuery] = useState(displayValue)
   const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -323,7 +351,7 @@ function MunicipalityPicker({
   }, [displayValue])
 
   const options = useMemo(() => {
-    if (query !== displayValue) return searchMunicipalities(query, 8)
+    if (!value || query !== displayValue) return searchMunicipalities(query, 8)
 
     const matches = searchMunicipalities('', 8)
     return [value, ...matches.filter((item) => item.c !== value.c)].slice(0, 8)
@@ -367,6 +395,8 @@ function MunicipalityPicker({
           autoComplete="off"
           role="combobox"
           aria-label={copy.municipalityAria}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
           aria-expanded={isOpen}
           aria-controls={listId}
           aria-activedescendant={
@@ -390,7 +420,11 @@ function MunicipalityPicker({
           onKeyDown={handleKeyDown}
         />
         <span className="municipality-picker__marker" aria-hidden="true">
-          ↓
+          <svg viewBox="0 0 20 20">
+            <circle cx="8.5" cy="8.5" r="5.25" />
+            <path d="m12.5 12.5 4 4" />
+          </svg>
+          {copy.municipalityAction}
         </span>
 
         {isOpen ? (
@@ -401,7 +435,7 @@ function MunicipalityPicker({
                   type="button"
                   role="option"
                   id={listId + '-' + municipality.c}
-                  aria-selected={municipality.c === value.c}
+                  aria-selected={municipality.c === value?.c}
                   className={index === activeIndex ? 'is-active' : ''}
                   key={municipality.c}
                   onMouseDown={(event) => event.preventDefault()}
@@ -422,9 +456,17 @@ function MunicipalityPicker({
           </div>
         ) : null}
       </div>
-      <p className="municipality-meta">
-        {getRegionName(value.g, language)} · {copy.sourceYear} {value.y || TAX_YEAR}
-      </p>
+      {error ? (
+        <p className="municipality-error" id={errorId} role="alert">
+          {error}
+        </p>
+      ) : value ? (
+        <p className="municipality-meta">
+          {getRegionName(value.g, language)} · {copy.sourceYear} {value.y || TAX_YEAR}
+        </p>
+      ) : (
+        <p className="municipality-meta municipality-meta--prompt">{copy.municipalityPrompt}</p>
+      )}
     </div>
   )
 }
@@ -578,18 +620,22 @@ function App() {
   const [language, setLanguage] = useState<Language>('it')
   const [draftSalary, setDraftSalary] = useState('35000')
   const [draftPayPeriods, setDraftPayPeriods] = useState<12 | 13 | 14>(13)
-  const [draftMunicipalityCode, setDraftMunicipalityCode] = useState('F205')
+  const [draftMunicipalityCode, setDraftMunicipalityCode] = useState<string | null>(null)
   const [calculatedSalary, setCalculatedSalary] = useState(35_000)
   const [calculatedPayPeriods, setCalculatedPayPeriods] = useState<12 | 13 | 14>(13)
   const [calculatedMunicipalityCode, setCalculatedMunicipalityCode] = useState('F205')
   const [hasError, setHasError] = useState(false)
+  const [hasMunicipalityError, setHasMunicipalityError] = useState(false)
+  const [hasCalculated, setHasCalculated] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(() =>
     typeof window === 'undefined' ? true : window.matchMedia('(min-width: 781px)').matches,
   )
 
   const copy = COPY[language]
   const locale = language === 'it' ? 'it-IT' : 'en-IE'
-  const draftMunicipality = getMunicipality(draftMunicipalityCode)
+  const draftMunicipality = draftMunicipalityCode
+    ? getMunicipality(draftMunicipalityCode)
+    : null
   const calculatedMunicipality = getMunicipality(calculatedMunicipalityCode)
   const currency = useMemo(
     () =>
@@ -690,20 +736,41 @@ function App() {
     event.preventDefault()
     const value = Number(draftSalary)
 
+    if (!draftMunicipality) {
+      setHasMunicipalityError(true)
+      return
+    }
+
     if (!Number.isFinite(value) || value < MIN_GROSS_SALARY || value > MAX_GROSS_SALARY) {
       setHasError(true)
       return
     }
 
     setHasError(false)
+    setHasMunicipalityError(false)
     setCalculatedSalary(value)
     setCalculatedPayPeriods(draftPayPeriods)
-    setCalculatedMunicipalityCode(draftMunicipalityCode)
+    setCalculatedMunicipalityCode(draftMunicipality.c)
+    setHasCalculated(true)
   }
 
-  function applyComparisonMunicipality(municipality: Municipality) {
+  function applyInteractiveMunicipality(municipality: Municipality) {
+    const parsedSalary = Number(draftSalary)
+    const salary =
+      Number.isFinite(parsedSalary) &&
+      parsedSalary >= MIN_GROSS_SALARY &&
+      parsedSalary <= MAX_GROSS_SALARY
+        ? parsedSalary
+        : sliderValue
+
+    setDraftSalary(String(salary))
     setDraftMunicipalityCode(municipality.c)
+    setCalculatedSalary(salary)
+    setCalculatedPayPeriods(draftPayPeriods)
     setCalculatedMunicipalityCode(municipality.c)
+    setHasError(false)
+    setHasMunicipalityError(false)
+    setHasCalculated(true)
   }
 
   const errorMessage =
@@ -751,11 +818,15 @@ function App() {
       meta: copy.municipalDatasetMeta,
       href: TAX_DATA_META.municipalSourcePage,
     },
-    {
-      title: copy.municipalSourceTitle + ' · ' + result.municipalityName,
-      meta: localSourceMeta,
-      href: municipalitySourceUrl,
-    },
+    ...(hasCalculated
+      ? [
+          {
+            title: copy.municipalSourceTitle + ' · ' + result.municipalityName,
+            meta: localSourceMeta,
+            href: municipalitySourceUrl,
+          },
+        ]
+      : []),
   ]
 
   return (
@@ -874,7 +945,11 @@ function App() {
                 value={draftMunicipality}
                 language={language}
                 copy={copy}
-                onChange={(municipality) => setDraftMunicipalityCode(municipality.c)}
+                error={hasMunicipalityError ? copy.municipalityRequired : undefined}
+                onChange={(municipality) => {
+                  setDraftMunicipalityCode(municipality.c)
+                  setHasMunicipalityError(false)
+                }}
               />
 
               <fieldset className="pay-periods">
@@ -908,28 +983,56 @@ function App() {
               <p className="form-note">{copy.standardFormNote}</p>
             </form>
 
-            <ResultPanel
-              result={result}
-              copy={copy}
-              language={language}
-              marginalNet={
-                marginalResult ? marginalResult.annualNet - result.annualNet : undefined
-              }
-              sourceUrl={municipalitySourceUrl}
-              formatCurrency={currency.format}
-              formatPercent={percent.format}
-            />
+            {hasCalculated ? (
+              <ResultPanel
+                result={result}
+                copy={copy}
+                language={language}
+                marginalNet={
+                  marginalResult ? marginalResult.annualNet - result.annualNet : undefined
+                }
+                sourceUrl={municipalitySourceUrl}
+                formatCurrency={currency.format}
+                formatPercent={percent.format}
+              />
+            ) : (
+              <section className="result-panel result-panel--empty" aria-live="polite">
+                <strong>— €</strong>
+                <p>{copy.emptyResult}</p>
+              </section>
+            )}
           </div>
         </section>
 
-        <section className="tools-section" id="strumenti" aria-labelledby="tools-title">
+        <section
+          className="tools-section"
+          id="strumenti"
+          aria-labelledby="tools-title"
+        >
           <div className="page-width">
             <div className="tools-heading">
               <h2 id="tools-title">{copy.toolsTitle}</h2>
               <p>{copy.toolsIntro}</p>
             </div>
 
-            <div className="tools-grid">
+            <Suspense
+              fallback={
+                <div className="tax-map-loading" role="status">
+                  <span>{copy.mapLoading}</span>
+                </div>
+              }
+            >
+              <TaxMap
+                grossSalary={sliderValue}
+                selectedMunicipality={draftMunicipality}
+                language={language}
+                formatCurrency={currency.format}
+                formatNumber={compactNumber.format}
+                onSelectMunicipality={applyInteractiveMunicipality}
+              />
+            </Suspense>
+
+            <div className="tools-grid" hidden={!hasCalculated}>
               <article className="tool-card tool-card--cities">
                 <div className="tool-card__topline">
                   <span>{copy.cityCompareTitle}</span>
@@ -946,7 +1049,7 @@ function App() {
                         type="button"
                         className={isSelected ? 'is-selected' : ''}
                         key={municipality.c}
-                        onClick={() => applyComparisonMunicipality(municipality)}
+                        onClick={() => applyInteractiveMunicipality(municipality)}
                       >
                         <span>
                           <strong>{municipality.n}</strong>
@@ -1007,7 +1110,12 @@ function App() {
           </div>
         </section>
 
-        <section className="detail-section" id="dettaglio" aria-labelledby="detail-title">
+        <section
+          className="detail-section"
+          id="dettaglio"
+          aria-labelledby="detail-title"
+          hidden={!hasCalculated}
+        >
           <div className="page-width">
             <div className="detail-heading">
               <h2 id="detail-title">{copy.detailTitle}</h2>
