@@ -1,0 +1,15 @@
+{
+  "taxYear": 2026,
+  "generatedAt": "2026-08-17T16:44:33.237Z",
+  "municipalities": 7897,
+  "currentYearRules": 3015,
+  "fallbackRules": 4881,
+  "noSurcharge": 966,
+  "specialCases": 1487,
+  "unresolved": 1,
+  "municipalSourcePage": "https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/download/tabella.htm",
+  "municipalSource2026": "https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/download/download.php?anno=2026",
+  "municipalFallbackSource2025": "https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/download/download.php?anno=2025",
+  "regionalSourcePage": "https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/addregirpef/download/tabella.htm",
+  "regionalSourceUpdatedAt": "2026-06-19"
+}
