@@ -77,9 +77,10 @@ async function answer(systemPrompt: string, messages: ChatTurn[]) {
   const output = await generator(
     [{ role: 'system', content: systemPrompt }, ...messages.slice(-6)],
     {
-      max_new_tokens: 120,
+      max_new_tokens: 220,
       do_sample: false,
-      repetition_penalty: 1.08,
+      repetition_penalty: 1.12,
+
     },
   )
   send({ type: 'done', fallbackText: finalText(output).trim() })

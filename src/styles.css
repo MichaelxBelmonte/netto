@@ -2612,15 +2612,74 @@ svg {
   opacity: 0.65;
 }
 
-/* Assistente locale: una route separata, caricata soltanto da #assistente. */
+/* Assistant top bar */
+.assistant-page .site-header {
+  position: sticky;
+  top: 0;
+  height: 68px;
+  padding-inline: max(20px, calc((100vw - 1180px) / 2));
+  background: rgba(245, 243, 235, 0.92);
+  backdrop-filter: blur(14px);
+}
+
+.assistant-page .header-actions {
+  gap: 10px;
+}
+
+.assistant-pdf-button {
+  min-height: 38px;
+  padding: 0 13px;
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+}
+
+.assistant-pdf-button:hover {
+  color: var(--ink);
+  background: var(--orange);
+}
+
+.assistant-pdf-feedback {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .assistant-page .site-header {
+    padding-inline: 14px;
+  }
+
+  .assistant-page .header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .assistant-pdf-button {
+    max-width: 42vw;
+    overflow: hidden;
+    padding-inline: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .assistant-pdf-feedback {
+    position: absolute;
+    top: 72px;
+    right: 14px;
+    padding: 4px 7px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+  }
+}
+
 .assistant-page {
   min-height: 100vh;
   background: var(--paper);
-}
-
-.assistant-back {
-  font-size: 14px;
-  font-weight: 700;
 }
 
 .assistant-main {

@@ -14,6 +14,7 @@ import { resolveAssistantScenario, updateAssistantScenario } from '../lib/assist
 import type { AssistantWorkerResponse, ChatTurn } from '../lib/assistantWorkerProtocol'
 import { searchMunicipalities } from '../lib/localTaxes'
 import { MAX_GROSS_SALARY, MIN_GROSS_SALARY } from '../lib/tax'
+import { downloadAssistantReport } from '../lib/assistantReport'
 
 type AiState = 'idle' | 'loading' | 'ready' | 'thinking' | 'error' | 'unsupported'
 
@@ -32,6 +33,7 @@ const UI = {
     modelFallback: 'Gemma non ha prodotto una risposta affidabile. Ti mostro i dati verificati:',
     enableForOpen: 'Per questa domanda serve Gemma: puoi accenderla con il toggle in alto.',
     quick: 'Domande rapide', input: 'Fai una domanda sui dati del calcolo', send: 'Invia',
+    exportPdf: 'Crea PDF personalizzato', pdfReady: 'PDF creato', pdfError: 'PDF non disponibile',
     authoritative: 'I numeri vengono dal motore fiscale; Gemma li spiega e può sbagliare il testo.',
     emptyChat: 'Pronto quando vuoi.', salaryControl: 'RAL', cityControl: 'Comune', periodsControl: 'Mensilità',
     prompts: {
@@ -53,6 +55,7 @@ const UI = {
     modelFallback: 'Gemma did not produce a reliable answer. Here are the verified figures:',
     enableForOpen: 'This question needs Gemma. You can turn it on with the toggle above.',
     quick: 'Quick questions', input: 'Ask about this calculation', send: 'Send',
+    exportPdf: 'Create custom PDF', pdfReady: 'PDF created', pdfError: 'PDF unavailable',
     authoritative: 'Figures come from the tax engine; Gemma explains them and may get the wording wrong.',
     emptyChat: 'Ready when you are.', salaryControl: 'Salary', cityControl: 'Municipality', periodsControl: 'Pay periods',
     prompts: {
@@ -81,8 +84,11 @@ export function AssistantPage({
     typeof navigator !== 'undefined' && 'gpu' in navigator ? 'idle' : 'unsupported',
   )
   const [progress, setProgress] = useState(0)
+  const [pdfFeedback, setPdfFeedback] = useState('')
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
   const workerRef = useRef<Worker | null>(null)
   const pendingFallbackRef = useRef('')
+  const pendingContextRef = useRef('')
   const transcriptRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -135,7 +141,9 @@ export function AssistantPage({
           const generated = message.fallbackText?.trim() ?? ''
           next[next.length - 1] = {
             role: 'assistant',
-            content: isPlausibleAssistantReply(generated) ? generated : pendingFallbackRef.current,
+            content: isPlausibleAssistantReply(generated, pendingContextRef.current)
+              ? generated
+              : pendingFallbackRef.current,
           }
           return next
         })
@@ -187,6 +195,21 @@ export function AssistantPage({
     }
   }
 
+  async function createCustomPdf() {
+    if (isDownloadingPdf || aiState === 'loading' || aiState === 'thinking') return
+    setIsDownloadingPdf(true)
+    setPdfFeedback('')
+    try {
+      await downloadAssistantReport(activeSnapshot, messages)
+      setPdfFeedback(copy.pdfReady)
+    } catch {
+      setPdfFeedback(copy.pdfError)
+    } finally {
+      setIsDownloadingPdf(false)
+      window.setTimeout(() => setPdfFeedback(''), 3_500)
+    }
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault()
     const question = draft.trim()
@@ -226,11 +249,12 @@ export function AssistantPage({
     setDraft('')
     setAiState('thinking')
     pendingFallbackRef.current = `${UI[responseLanguage].modelFallback} ${answerGuidedQuestion('takeHome', nextSnapshot)}`
+    pendingContextRef.current = buildAssistantContext(nextSnapshot)
     ensureWorker().postMessage({
       type: 'ask',
       systemPrompt: getAssistantSystemPrompt(
         responseLanguage,
-        buildAssistantContext(nextSnapshot),
+        pendingContextRef.current,
       ),
       messages: nextMessages,
     })
@@ -239,12 +263,11 @@ export function AssistantPage({
   return (
     <div className="assistant-page">
       <header className="site-header">
-        <a className="wordmark" href="#top" aria-label={copy.back}>
+        <a className="wordmark" href="#top" aria-label="netto.">
           <img src={brandMark} alt="" />
           <span>netto.</span>
         </a>
         <div className="header-actions">
-          <a className="assistant-back" href="#top">← {copy.back}</a>
           <div className="language-switch" aria-label={copy.language}>
             {(['it', 'en'] as const).map((item) => (
               <button type="button" key={item} aria-pressed={language === item} onClick={() => onLanguageChange(item)}>
@@ -252,6 +275,10 @@ export function AssistantPage({
               </button>
             ))}
           </div>
+          <button className="assistant-pdf-button" type="button" onClick={() => void createCustomPdf()} disabled={isDownloadingPdf || aiState === 'loading' || aiState === 'thinking'} aria-busy={isDownloadingPdf}>
+            {copy.exportPdf}
+          </button>
+          {pdfFeedback ? <span className="assistant-pdf-feedback" role="status">{pdfFeedback}</span> : null}
         </div>
       </header>
 

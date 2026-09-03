@@ -153,12 +153,13 @@ export function answerScenarioChange(previous: AssistantSnapshot, next: Assistan
 }
 
 export function getAssistantSystemPrompt(language: AssistantLanguage, context: string) {
-  return `You are "netto.", a concise assistant for verified Italian salary calculations.
-Reply in ${language === 'it' ? 'Italian' : 'English'} using at most 90 words.
-Use only the authoritative calculation below for every number. Never calculate figures yourself, invent tax rules, or alter a number.
-You may explain general payroll concepts, but clearly separate them from this estimate.
-If the question asks for a different personal situation, legal advice, or data not present, clearly say it is outside this estimate.
-Distinguish exact inputs from estimates. Employer costs are indicative.
+  return `You are "netto.", a precise assistant for verified Italian salary calculations.
+Reply in ${language === 'it' ? 'Italian' : 'English'} using short paragraphs and, when useful, bullets. Keep the answer under 160 words.
+Start with the direct answer. Explain the relevant figures in plain language and use the exact labels from the context.
+Use only the authoritative calculation below for numbers. Never calculate figures yourself, invent tax rules, or alter a number.
+Never pretend that an estimate is exact: employer costs are indicative and the standard profile excludes dependants, other income, welfare and bonuses.
+If the user asks for a different personal situation, legal advice, or data not present, say so clearly and offer the closest verified scenario.
+Do not repeat the question, do not mention your model, and do not produce filler, greetings, or duplicated sentences.
 
 ${context}`
 }
@@ -203,7 +204,7 @@ export function detectGuidedQuestion(question: string): GuidedQuestion | undefin
 }
 
 /** Blocca gli errori degenerativi più comuni dei modelli molto piccoli. */
-export function isPlausibleAssistantReply(reply: string) {
+export function isPlausibleAssistantReply(reply: string, authoritativeContext = '') {
   const text = reply.trim()
   if (text.length < 20 || text.length > 1_200) return false
   if (/undefined|nan|nessuno nuovo|total conto|\b0{2}[.,]0{3}\b/i.test(text)) return false
@@ -212,5 +213,17 @@ export function isPlausibleAssistantReply(reply: string) {
     .split('\n')
     .map((line) => line.replace(/\W+/g, ' ').trim().toLocaleLowerCase('it-IT'))
     .filter((line) => line.length > 8)
-  return new Set(lines).size === lines.length
+  if (new Set(lines).size !== lines.length) return false
+
+  // I modelli piccoli possono inventare importi anche quando il testo è fluido.
+  // Ogni numero della risposta deve quindi comparire nel contesto autorevole.
+  const numericTokens = text.match(/\d[\d.,]*/g) ?? []
+  const normaliseNumber = (value: string) => value.replace(/[.,]/g, '')
+  const contextNumbers = new Set(
+    (authoritativeContext.match(/\d[\d.,]*/g) ?? []).map(normaliseNumber),
+  )
+  return (
+    numericTokens.every((token) => normaliseNumber(token).length <= 12) &&
+    numericTokens.every((token) => contextNumbers.has(normaliseNumber(token)))
+  )
 }
