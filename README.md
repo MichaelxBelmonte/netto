@@ -95,7 +95,19 @@ npm run map:update
 
 React e TypeScript gestiscono l’interfaccia; Vite e Vitest coprono build e test. Tutti i dati restano nel browser: la ricerca del Comune non invia la RAL a un backend.
 
-L’assistente non calcola tasse autonomamente. Con l’AI locale attiva usa una pipeline in due passaggi: il modello Qwen selezionato traduce la richiesta in un piano JSON validato; il motore esegue tutte le combinazioni richieste di RAL, Comuni, mensilità e costo aziendale; infine lo stesso modello riceve domanda originale, tabella autorevole e bozza deterministica per produrre una risposta naturale. Un parser deterministico protegge il piano e reinserisce ogni scenario esplicito eventualmente perso dal modello. I follow-up mantengono gli input precedenti e la lingua viene rilevata a ogni messaggio. Se il modello è spento, WebGPU non è disponibile, il piano è invalido o l’output introduce numeri non autorizzati, l’interfaccia usa il fallback deterministico verificato. La chat importa Transformers.js 4.2.0 da una CDN versionata e permette di scegliere tra `onnx-community/Qwen2.5-0.5B-Instruct` e `onnx-community/Qwen3.5-0.8B-ONNX-OPT`, in formato Q4F16. Il download avviene solo dopo consenso e resta nella cache del browser. Nessuna RAL viene inviata a un servizio di inferenza.
+## Assistente AI: architettura e benchmark locale
+
+L’assistente non calcola tasse autonomamente. Con l’AI locale attiva usa una pipeline in due passaggi:
+
+1. Qwen traduce la richiesta in un piano JSON (`RAL[]`, `Comuni[]`, mensilità e richiesta del costo aziendale).
+2. Un validatore confronta il piano con gli elementi espliciti della domanda e ripristina eventuali scenari omessi.
+3. Il motore esegue ogni combinazione `RAL × Comune` e calcola netto, imposte, contributi e costo azienda.
+4. Lo stesso modello riceve domanda originale, matrice autorevole e riepilogo deterministico, quindi aggiunge l’interpretazione.
+5. Il riepilogo del motore è sempre mostrato; se il testo AI è incoerente o introduce numeri non autorizzati viene scartato.
+
+Il benchmark eseguito localmente sullo stesso prompt ha mostrato che i modelli sub-1B non sono affidabili come calcolatori: Gemma 3 270M ha inventato importi e Qwen 2.5 0.5B ha inventato percentuali quando incaricati di rispondere direttamente. Sul planning strutturato, invece, Qwen 2.5 ha estratto correttamente due RAL, due Comuni, mensilità e costo aziendale. Per questo non è necessario addestrare il modello sulle formule fiscali: il motore resta l’unica fonte numerica, mentre un eventuale fine-tuning futuro riguarderebbe soltanto intent parsing e qualità linguistica.
+
+La chat importa Transformers.js 4.2.0 da una CDN versionata e permette di scegliere tra `onnx-community/Qwen2.5-0.5B-Instruct` e `onnx-community/Qwen3.5-0.8B-ONNX-OPT`, in formato Q4F16. Il download avviene solo dopo consenso e resta nella cache del browser. Qwen 3.5 richiede un browser/WebGPU compatibile; il backend CPU ONNX della macchina di sviluppo non supporta ancora un suo operatore custom. Nessuna RAL viene inviata a un servizio di inferenza.
 
 ## Verifica del 2 e 3 settembre 2026
 

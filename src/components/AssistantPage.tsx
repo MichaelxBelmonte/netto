@@ -308,6 +308,7 @@ export function AssistantPage({
 
   function submit(event: FormEvent) {
     event.preventDefault()
+    if (aiState === 'loading' || aiState === 'thinking') return
     const question = draft.trim()
     if (!question) return
     const responseLanguage = detectAssistantLanguage(question)
@@ -404,7 +405,7 @@ export function AssistantPage({
               <span className="assistant-toggle-track" aria-hidden="true"><i /></span>
               <span>{copy.modelToggle}</span>
             </button>
-            <button type="submit" disabled={!draft.trim()} aria-label={copy.send}>↑</button>
+            <button type="submit" disabled={!draft.trim() || aiState === 'loading' || aiState === 'thinking'} aria-label={copy.send}>↑</button>
           </form>
           <fieldset className="assistant-model-select" disabled={aiState === 'loading' || aiState === 'thinking'}>
             <legend>{copy.modelChoice}</legend>
