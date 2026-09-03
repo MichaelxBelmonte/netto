@@ -17,7 +17,7 @@ Il progetto nasce per il task del ruolo AI Builder di Jet HR. La scelta distinti
 - mostra quanto resta dei successivi 1.000 € lordi
 - confronta due RAL mantenendo invariati Comune e mensilità
 - scarica un report PDF visuale con riconciliazione, confronto RAL e Comuni, costo aziendale e grafici
-- offre una pagina “Chiedi a netto.”: risposte rapide deterministiche e tre modelli locali selezionabili via WebGPU — Gemma 3 270M, Qwen 2.5 0.5B e Qwen 3.5 0.8B
+- offre una pagina “Chiedi a netto.” con due modelli locali selezionabili via WebGPU — Qwen 2.5 0.5B e Qwen 3.5 0.8B
 - affianca il costo per l’azienda: contributi a suo carico, INAIL e TFR per settore e dimensione, e la quota del costo che arriva netta al dipendente
 - collega norme, dataset e scheda MEF del Comune selezionato
 - genera un link condivisibile del calcolo (`?ral=35000&comune=F205&mensilita=13`, con `&lang=en` per l’inglese)
@@ -85,7 +85,7 @@ npm run map:update
 - `src/lib/salaryComparison.ts`: differenze tra due proiezioni sullo stesso profilo fiscale
 - `src/lib/salaryReport.ts`: modello e generazione lazy del riepilogo PDF
 - `src/lib/assistantContext.ts`: contesto verificato e risposte rapide dell’assistente
-- `src/workers/nettoAssistant.worker.ts`: caricamento e inferenza locale di Gemma fuori dal thread della UI
+- `src/workers/nettoAssistant.worker.ts`: caricamento e inferenza locale Qwen fuori dal thread della UI
 - `src/components/AssistantPage.tsx`: pagina chat, consenso al download e fallback senza WebGPU
 - `src/components/TaxMap.tsx`: proiezione SVG, distribuzione e selezione territoriale
 - `src/data/`: snapshot fiscali, metadati e confini ISTAT semplificati
@@ -95,7 +95,7 @@ npm run map:update
 
 React e TypeScript gestiscono l’interfaccia; Vite e Vitest coprono build e test. Tutti i dati restano nel browser: la ricerca del Comune non invia la RAL a un backend.
 
-L’assistente non calcola tasse autonomamente. Con l’AI locale attiva usa una pipeline in due passaggi: il modello traduce la richiesta in un piano JSON validato; il motore esegue tutte le combinazioni richieste di RAL, Comuni, mensilità e costo aziendale; infine lo stesso modello riceve domanda originale, tabella autorevole e bozza deterministica per produrre una risposta naturale. Un parser deterministico protegge il piano e reinserisce ogni scenario esplicito eventualmente perso dal modello. I follow-up mantengono gli input precedenti e la lingua viene rilevata a ogni messaggio. Se il modello è spento, WebGPU non è disponibile, il piano è invalido o l’output introduce numeri non autorizzati, l’interfaccia usa il fallback deterministico verificato. La chat importa Transformers.js 4.2.0 da una CDN versionata e permette di scegliere tra `onnx-community/gemma-3-270m-it-ONNX`, `onnx-community/Qwen2.5-0.5B-Instruct` e `onnx-community/Qwen3.5-0.8B-ONNX-OPT`, in formato Q4F16. Il download avviene solo dopo consenso e resta nella cache del browser. Nessuna RAL viene inviata a un servizio di inferenza.
+L’assistente non calcola tasse autonomamente. Con l’AI locale attiva usa una pipeline in due passaggi: il modello Qwen selezionato traduce la richiesta in un piano JSON validato; il motore esegue tutte le combinazioni richieste di RAL, Comuni, mensilità e costo aziendale; infine lo stesso modello riceve domanda originale, tabella autorevole e bozza deterministica per produrre una risposta naturale. Un parser deterministico protegge il piano e reinserisce ogni scenario esplicito eventualmente perso dal modello. I follow-up mantengono gli input precedenti e la lingua viene rilevata a ogni messaggio. Se il modello è spento, WebGPU non è disponibile, il piano è invalido o l’output introduce numeri non autorizzati, l’interfaccia usa il fallback deterministico verificato. La chat importa Transformers.js 4.2.0 da una CDN versionata e permette di scegliere tra `onnx-community/Qwen2.5-0.5B-Instruct` e `onnx-community/Qwen3.5-0.8B-ONNX-OPT`, in formato Q4F16. Il download avviene solo dopo consenso e resta nella cache del browser. Nessuna RAL viene inviata a un servizio di inferenza.
 
 ## Verifica del 2 e 3 settembre 2026
 

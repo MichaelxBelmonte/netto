@@ -1,6 +1,6 @@
 export type ChatTurn = { role: 'user' | 'assistant'; content: string }
 
-export type AssistantModelId = 'gemma-270m' | 'qwen2.5-0.5b' | 'qwen3.5-0.8b'
+export type AssistantModelId = 'qwen2.5-0.5b' | 'qwen3.5-0.8b'
 
 export type AssistantRequestId = string
 export type AssistantRequestPurpose = 'plan' | 'answer'
@@ -50,7 +50,6 @@ export type AssistantWorkerResponse =
     }
 
 const MODEL_IDS: ReadonlySet<string> = new Set<AssistantModelId>([
-  'gemma-270m',
   'qwen2.5-0.5b',
   'qwen3.5-0.8b',
 ])

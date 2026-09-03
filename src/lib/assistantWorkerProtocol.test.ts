@@ -10,7 +10,7 @@ describe('assistant worker protocol', () => {
     expect(isAssistantWorkerRequest({
       type: 'load',
       requestId: 'load-1',
-      model: 'gemma-270m',
+      model: 'qwen2.5-0.5b',
     })).toBe(true)
     expect(isAssistantWorkerRequest({
       type: 'ask',
@@ -24,7 +24,7 @@ describe('assistant worker protocol', () => {
 
   it('rejects malformed and unknown requests at the worker boundary', () => {
     expect(isAssistantWorkerRequest(null)).toBe(false)
-    expect(isAssistantWorkerRequest({ type: 'load', model: 'gemma-270m' })).toBe(false)
+    expect(isAssistantWorkerRequest({ type: 'load', model: 'qwen2.5-0.5b' })).toBe(false)
     expect(isAssistantWorkerRequest({
       type: 'ask',
       requestId: 'ask-1',
@@ -44,7 +44,7 @@ describe('assistant worker protocol', () => {
   })
 
   it('recognizes only supported model identifiers', () => {
-    expect(isAssistantModelId('gemma-270m')).toBe(true)
+    expect(isAssistantModelId('gemma-270m')).toBe(false)
     expect(isAssistantModelId('qwen2.5-0.5b')).toBe(true)
     expect(isAssistantModelId('qwen3.5-0.8b')).toBe(true)
     expect(isAssistantModelId('qwen3.5-0.8B')).toBe(false)

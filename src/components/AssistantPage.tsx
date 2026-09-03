@@ -35,12 +35,6 @@ const ASSISTANT_MODELS: Array<{
   description: { it: string; en: string }
 }> = [
   {
-    id: 'gemma-270m',
-    label: 'Gemma 3 270M',
-    size: '~273 MB',
-    description: { it: 'Più leggero e veloce', en: 'Lightest and fastest' },
-  },
-  {
     id: 'qwen2.5-0.5b',
     label: 'Qwen 2.5 0.5B',
     size: '~483 MB',
@@ -122,7 +116,7 @@ export function AssistantPage({
     typeof navigator !== 'undefined' && 'gpu' in navigator ? 'idle' : 'unsupported',
   )
   const [progress, setProgress] = useState(0)
-  const [selectedModel, setSelectedModel] = useState<AssistantModelId>('gemma-270m')
+  const [selectedModel, setSelectedModel] = useState<AssistantModelId>('qwen2.5-0.5b')
   const [pdfFeedback, setPdfFeedback] = useState('')
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
   const workerRef = useRef<Worker | null>(null)

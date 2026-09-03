@@ -11,7 +11,6 @@ import {
 
 const TRANSFORMERS_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0'
 const MODELS: Record<AssistantModelId, string> = {
-  'gemma-270m': 'onnx-community/gemma-3-270m-it-ONNX',
   'qwen2.5-0.5b': 'onnx-community/Qwen2.5-0.5B-Instruct',
   'qwen3.5-0.8b': 'onnx-community/Qwen3.5-0.8B-ONNX-OPT',
 }
@@ -110,7 +109,7 @@ async function answer(request: Extract<AssistantWorkerRequest, { type: 'ask' }>)
     {
       max_new_tokens: request.purpose === 'plan'
         ? 120
-        : request.model === 'gemma-270m' ? 220 : 300,
+        : 300,
       do_sample: false,
       repetition_penalty: 1.12,
     },
