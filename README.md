@@ -16,7 +16,8 @@ Il progetto nasce per il task del ruolo AI Builder di Jet HR. La scelta distinti
 - offre un atlante fiscale interattivo, visibile anche senza aver scelto un Comune
 - mostra quanto resta dei successivi 1.000 € lordi
 - confronta due RAL mantenendo invariati Comune e mensilità
-- scarica un riepilogo PDF compatto del calcolo e del confronto
+- scarica un report PDF visuale con riconciliazione, confronto RAL e Comuni, costo aziendale e grafici
+- offre una pagina “Chiedi a netto.”: risposte rapide deterministiche e una chat Gemma 3 270M opzionale, eseguita localmente via WebGPU
 - affianca il costo per l’azienda: contributi a suo carico, INAIL e TFR per settore e dimensione, e la quota del costo che arriva netta al dipendente
 - collega norme, dataset e scheda MEF del Comune selezionato
 - genera un link condivisibile del calcolo (`?ral=35000&comune=F205&mensilita=13`, con `&lang=en` per l’inglese)
@@ -83,6 +84,9 @@ npm run map:update
 - `src/lib/employerCost.ts`: costo del lavoro a carico dell’azienda, con la fonte e il livello di confidenza di ogni voce
 - `src/lib/salaryComparison.ts`: differenze tra due proiezioni sullo stesso profilo fiscale
 - `src/lib/salaryReport.ts`: modello e generazione lazy del riepilogo PDF
+- `src/lib/assistantContext.ts`: contesto verificato e risposte rapide dell’assistente
+- `src/workers/nettoAssistant.worker.ts`: caricamento e inferenza locale di Gemma fuori dal thread della UI
+- `src/components/AssistantPage.tsx`: pagina chat, consenso al download e fallback senza WebGPU
 - `src/components/TaxMap.tsx`: proiezione SVG, distribuzione e selezione territoriale
 - `src/data/`: snapshot fiscali, metadati e confini ISTAT semplificati
 - `scripts/build-tax-data.mjs`: download, normalizzazione, validazione degli scaglioni, regola 2025 e quality flags
@@ -90,6 +94,8 @@ npm run map:update
 - `src/lib/*.test.ts`: golden case calcolati dalla norma, soglie nazionali, eccezioni regionali, ricerca e invarianti del registro
 
 React e TypeScript gestiscono l’interfaccia; Vite e Vitest coprono build e test. Tutti i dati restano nel browser: la ricerca del Comune non invia la RAL a un backend.
+
+L’assistente non calcola tasse: parte con una conversazione vuota, usa la RAL corrente soltanto come riferimento e riconosce nelle domande nuove RAL, Comuni, mensilità e profili aziendali. Ogni scenario viene ricalcolato dai motori verificati; Gemma riceve l’istantanea risultante e la spiega. I follow-up mantengono gli input precedenti, mentre la lingua viene rilevata a ogni messaggio con italiano predefinito nei casi ambigui. Le risposte numeriche e le domande rapide non sono affidate al modello generativo; un controllo scarta inoltre gli output locali chiaramente degenerati. La chat libera importa Transformers.js 4.2.0 da una CDN versionata e scarica su consenso `onnx-community/gemma-3-270m-it-ONNX` in formato Q4F16 (circa 273 MB), salvato dalla cache del browser. Nessuna RAL viene inviata a un servizio di inferenza; senza WebGPU resta disponibile il fallback deterministico.
 
 ## Verifica del 2 e 3 settembre 2026
 

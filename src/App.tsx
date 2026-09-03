@@ -42,6 +42,9 @@ import { buildSalaryReport, downloadSalaryReport } from './lib/salaryReport'
 const TaxMap = lazy(() =>
   import('./components/TaxMap').then((module) => ({ default: module.TaxMap })),
 )
+const AssistantPage = lazy(() =>
+  import('./components/AssistantPage').then((module) => ({ default: module.AssistantPage })),
+)
 
 const EXAMPLE_SALARIES = [25_000, 35_000, 50_000]
 const COMPARISON_CITY_CODES = ['F205', 'H501', 'F839', 'L219', 'A944', 'G273']
@@ -91,6 +94,7 @@ const COPY = {
   it: {
     navigation: 'Navigazione principale',
     toolsNav: 'Atlante',
+    assistantNav: 'Assistente',
     detailNav: 'Dettaglio',
     sourcesNav: 'Fonti',
     language: 'Cambia lingua',
@@ -141,6 +145,7 @@ const COPY = {
     netPerYear: 'netti / anno',
     copyLink: 'Copia link a questo calcolo',
     downloadPdf: 'Scarica PDF',
+    askAssistant: 'Chiedi a netto.',
     pdfReady: 'PDF scaricato',
     pdfError: 'PDF non disponibile',
     linkCopied: 'Link copiato',
@@ -266,6 +271,7 @@ const COPY = {
   en: {
     navigation: 'Main navigation',
     toolsNav: 'Atlas',
+    assistantNav: 'Assistant',
     detailNav: 'Breakdown',
     sourcesNav: 'Sources',
     language: 'Change language',
@@ -316,6 +322,7 @@ const COPY = {
     netPerYear: 'net / year',
     copyLink: 'Copy link to this calculation',
     downloadPdf: 'Download PDF',
+    askAssistant: 'Ask netto.',
     pdfReady: 'PDF downloaded',
     pdfError: 'PDF unavailable',
     linkCopied: 'Link copied',
@@ -861,6 +868,9 @@ function ResultPanel({
         >
           {copy.downloadPdf}
         </button>
+        <a className="copy-link copy-link--assistant" href="#assistente">
+          {copy.askAssistant}
+        </a>
         <span className="copy-link-feedback" role="status" aria-live="polite">
           {pdfFeedback || copyFeedback}
         </span>
@@ -893,6 +903,9 @@ function App() {
   const [employerSize, setEmployerSize] = useState<EmployerSize>('upTo5')
   const [comparisonSalary, setComparisonSalary] = useState(() =>
     String(suggestedComparisonSalary(DEEP_LINK.salary)),
+  )
+  const [isAssistantView, setIsAssistantView] = useState(() =>
+    typeof window !== 'undefined' && window.location.hash === '#assistente',
   )
 
   const copy = COPY[language]
@@ -1041,6 +1054,12 @@ function App() {
     return () => mediaQuery.removeEventListener('change', syncDetailState)
   }, [])
 
+  useEffect(() => {
+    const syncView = () => setIsAssistantView(window.location.hash === '#assistente')
+    window.addEventListener('hashchange', syncView)
+    return () => window.removeEventListener('hashchange', syncView)
+  }, [])
+
   // Tasto indietro: l'URL torna a una query precedente, quindi lo stato va riallineato a quella.
   useEffect(() => {
     function restoreFromUrl() {
@@ -1164,6 +1183,8 @@ function App() {
     const report = buildSalaryReport({
       result,
       comparison: comparisonProjection ?? undefined,
+      cityComparisons: cityComparisons.map(({ projection }) => projection),
+      employerCost,
       language,
       regionName: getRegionName(result.regionKey, language),
       sourceUrl: municipalitySourceUrl,
@@ -1216,6 +1237,35 @@ function App() {
       : []),
   ]
 
+  if (isAssistantView) {
+    return (
+      <Suspense fallback={<div className="assistant-route-loading">netto.</div>}>
+        <AssistantPage
+          snapshot={{
+            result,
+            comparison: comparisonProjection ?? undefined,
+            cityComparisons: cityComparisons.map(({ projection }) => projection),
+            employerCost,
+            language,
+          }}
+          onLanguageChange={(nextLanguage) => {
+            setLanguage(nextLanguage)
+            syncUrl(
+              nextLanguage,
+              hasCalculated
+                ? {
+                    salary: calculatedSalary,
+                    municipalityCode: calculatedMunicipalityCode,
+                    periods: calculatedPayPeriods,
+                  }
+                : undefined,
+            )
+          }}
+        />
+      </Suspense>
+    )
+  }
+
   return (
     <div className="app-shell">
       <header className="site-header">
@@ -1226,6 +1276,7 @@ function App() {
 
         <div className="header-actions">
           <nav aria-label={copy.navigation}>
+            <a href="#assistente">{copy.assistantNav}</a>
             <a href="#strumenti">{copy.toolsNav}</a>
             {hasCalculated ? <a href="#dettaglio">{copy.detailNav}</a> : null}
             <a href="#fonti">{copy.sourcesNav}</a>
