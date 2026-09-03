@@ -131,6 +131,10 @@ svg {
   border-color: currentColor;
 }
 
+.mobile-assistant-link {
+  display: none;
+}
+
 .language-switch {
   display: flex;
   overflow: hidden;
@@ -2045,8 +2049,26 @@ svg {
     display: none;
   }
 
+  .mobile-assistant-link {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 7px;
+    padding: 0 14px;
+    color: var(--white);
+    background: var(--ink);
+    border: 1px solid var(--ink);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .mobile-assistant-link span {
+    color: var(--orange);
+    font-size: 17px;
+  }
+
   .header-actions {
-    gap: 0;
+    gap: 10px;
   }
 
   .hero {
@@ -2194,7 +2216,7 @@ svg {
 
   .language-switch button {
     min-width: 40px;
-    min-height: 36px;
+    min-height: 44px;
     padding-inline: 8px;
   }
 
@@ -2627,7 +2649,7 @@ svg {
 }
 
 .assistant-pdf-button {
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 13px;
   color: var(--white);
   font-size: 12px;
@@ -3189,37 +3211,105 @@ svg {
 }
 
 .assistant-model-select {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin: -8px 20px 12px;
+  min-width: 0;
+  margin: 14px 0 10px;
+  padding: 0;
+  border: 0;
+}
+
+.assistant-model-select legend {
+  margin-bottom: 9px;
+  padding: 0;
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.assistant-model-select select {
-  min-width: min(100%, 245px);
-  min-height: 38px;
-  padding: 0 10px;
-  color: var(--ink);
-  font: inherit;
-  text-transform: none;
-  background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: 0;
+.assistant-model-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.assistant-model-select select:focus-visible {
+.assistant-model-option {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 76px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  cursor: pointer;
+  background: rgba(255, 253, 248, 0.58);
+  border: 1px solid var(--line);
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.assistant-model-option:hover {
+  border-color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.assistant-model-option:has(input:checked) {
+  background: var(--white);
+  border-color: var(--ink);
+  box-shadow: inset 0 -3px 0 var(--orange);
+}
+
+.assistant-model-option:has(input:focus-visible) {
   outline: 3px solid var(--orange-ink);
   outline-offset: 2px;
 }
 
-.assistant-model-select select:disabled {
+.assistant-model-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.assistant-model-option__copy,
+.assistant-model-option__meta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.assistant-model-option__copy strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.assistant-model-option small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.assistant-model-option__meta {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.assistant-model-option__meta b {
+  padding: 3px 5px;
+  white-space: nowrap;
+  background: #ebe9e2;
+  font-size: 10px;
+}
+
+.assistant-model-option:has(input:checked) .assistant-model-option__meta small {
+  color: var(--orange-ink);
+  font-weight: 800;
+}
+
+.assistant-model-select:disabled .assistant-model-option {
   cursor: wait;
-  opacity: 0.62;
+  opacity: 0.64;
 }
 
 .assistant-model-status {
@@ -3346,8 +3436,8 @@ svg {
 
 .assistant-input > button[type='submit'] {
   grid-area: send;
-  width: 40px;
-  min-height: 40px;
+  width: 44px;
+  min-height: 44px;
   padding: 0;
   border-radius: 50%;
   font-size: 18px;
@@ -3357,7 +3447,7 @@ svg {
   grid-area: engine;
   justify-self: start;
   width: auto;
-  min-height: 32px;
+  min-height: 44px;
   padding: 4px 8px 4px 4px;
   color: var(--muted);
   background: transparent;
@@ -3416,6 +3506,14 @@ svg {
   .assistant-context-strip > span:first-child,
   .assistant-context-strip > span:last-child {
     display: none;
+  }
+
+  .assistant-model-options {
+    grid-template-columns: 1fr;
+  }
+
+  .assistant-model-option {
+    min-height: 68px;
   }
 
   .assistant-transcript {
@@ -3498,6 +3596,7 @@ svg {
 .assistant-scenario-controls input,
 .assistant-scenario-controls select {
   width: 72px;
+  min-height: 44px;
   padding: 3px 1px;
   color: var(--ink);
   background: transparent;
@@ -3563,6 +3662,57 @@ svg {
   }
 
   .assistant-page .header-actions {
-    gap: 14px;
+    min-width: 0;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-header {
+    padding-inline: 10px;
+  }
+
+  .wordmark {
+    gap: 5px;
+    font-size: 20px;
+  }
+
+  .wordmark img {
+    width: 30px;
+  }
+
+  .mobile-assistant-link {
+    padding-inline: 10px;
+  }
+
+  .language-switch button {
+    min-width: 36px;
+    padding-inline: 5px;
+  }
+
+  .assistant-page .wordmark span,
+  .assistant-page .language-switch {
+    display: none;
+  }
+
+  .assistant-page .site-header {
+    padding-inline: 10px;
+  }
+
+  .assistant-pdf-button {
+    max-width: none;
+  }
+
+  .assistant-model-option {
+    padding-inline: 10px;
+  }
+
+  .assistant-scenario-controls label > span {
+    font-size: 9px;
+  }
+
+  .assistant-scenario-controls input,
+  .assistant-scenario-controls label:nth-child(2) input {
+    width: 82px;
   }
 }

@@ -37,25 +37,38 @@ function findMentionedMunicipality(question: string): Municipality | undefined {
   return municipalityNames.find(({ name }) => normalized.includes(` ${name} `))?.municipality
 }
 
-function findMentionedSalary(question: string) {
+export function findMentionedSalaries(question: string) {
   const normalized = normalize(question)
-  const compact = normalized.match(/(?:^|\s)(\d{2,3})(?:[.,]?\d)?\s*k(?:\s|$)/)
-  const thousands = normalized.match(/(?:^|\s)(\d{2,3})\s*(?:mila|thousand)(?:\s|$)/)
-  const full = question.match(/(?:^|\D)(\d{2,3})[.\s](\d{3})(?:\D|$)/)
-  const plain = question.match(/(?:^|\D)(\d{5,6})(?:\D|$)/)
-  const salary = compact
-    ? Number(compact[1]) * 1_000
-    : thousands
-      ? Number(thousands[1]) * 1_000
-      : full
-        ? Number(`${full[1]}${full[2]}`)
-        : plain
-          ? Number(plain[1])
-          : undefined
+  const pattern = /\b(?:(\d{2,3})(?:[.,](\d))?\s*k|(\d{2,3})\s*(?:mila|thousand)|(\d{2,3})\s+(\d{3})|(\d{5,6}))\b/g
+  const salaries: number[] = []
 
-  return salary !== undefined && salary >= MIN_GROSS_SALARY && salary <= MAX_GROSS_SALARY
-    ? salary
-    : undefined
+  for (const match of normalized.matchAll(pattern)) {
+    const salary = match[1]
+      ? Math.round(Number(`${match[1]}.${match[2] ?? '0'}`) * 1_000)
+      : match[3]
+        ? Number(match[3]) * 1_000
+        : match[4] && match[5]
+          ? Number(`${match[4]}${match[5]}`)
+          : Number(match[6])
+    if (
+      salary >= MIN_GROSS_SALARY &&
+      salary <= MAX_GROSS_SALARY &&
+      salaries.at(-1) !== salary
+    ) salaries.push(salary)
+  }
+
+  if (salaries.length < 2 && /\b(?:tra|fra|versus|vs|differenza|confront|compare|between)\b/.test(normalized)) {
+    for (const match of normalized.matchAll(/\b(\d{2,3})\b/g)) {
+      const salary = Number(match[1]) * 1_000
+      if (
+        salary >= MIN_GROSS_SALARY &&
+        salary <= MAX_GROSS_SALARY &&
+        !salaries.includes(salary)
+      ) salaries.push(salary)
+    }
+  }
+
+  return salaries
 }
 
 function findMentionedPayPeriods(question: string): 12 | 13 | 14 | undefined {
@@ -88,7 +101,8 @@ export function resolveAssistantScenario(
   current: AssistantSnapshot,
 ): AssistantSnapshot {
   const municipality = findMentionedMunicipality(question) ?? getMunicipality(current.result.municipalityCode)
-  const salary = findMentionedSalary(question) ?? current.result.grossAnnualSalary
+  const salaries = findMentionedSalaries(question)
+  const salary = salaries[0] ?? current.result.grossAnnualSalary
   const payPeriods = findMentionedPayPeriods(question) ?? current.result.payPeriods
   const employerProfile = findEmployerProfile(question, current)
   const result = calculateSalaryProjection(salary, payPeriods, municipality)
@@ -101,9 +115,11 @@ export function resolveAssistantScenario(
     ...current,
     result,
     reference: changed ? current.result : current.reference,
-    comparison: current.comparison
-      ? calculateSalaryProjection(current.comparison.grossAnnualSalary, payPeriods, municipality)
-      : undefined,
+    comparison: salaries[1]
+      ? calculateSalaryProjection(salaries[1], payPeriods, municipality)
+      : current.comparison
+        ? calculateSalaryProjection(current.comparison.grossAnnualSalary, payPeriods, municipality)
+        : undefined,
     cityComparisons: current.cityComparisons.map((item) =>
       calculateSalaryProjection(salary, payPeriods, getMunicipality(item.municipalityCode)),
     ),

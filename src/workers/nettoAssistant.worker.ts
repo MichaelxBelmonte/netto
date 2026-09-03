@@ -1,10 +1,12 @@
 /// <reference lib="webworker" />
 
-import type {
-  AssistantModelId,
-  AssistantWorkerRequest,
-  AssistantWorkerResponse,
-  ChatTurn,
+import {
+  isAssistantWorkerRequest,
+  type AssistantModelId,
+  type AssistantRequestId,
+  type AssistantWorkerRequest,
+  type AssistantWorkerResponse,
+  type ChatTurn,
 } from '../lib/assistantWorkerProtocol'
 
 const TRANSFORMERS_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0'
@@ -19,91 +21,151 @@ type Generator = ((
   options: Record<string, unknown>,
 ) => Promise<Array<{ generated_text?: string | Array<{ role: string; content: string }> }>>) & {
   tokenizer: unknown
+  dispose?: () => void | Promise<void>
+}
+
+type TransformersModule = {
+  env: { allowLocalModels: boolean }
+  pipeline: (
+    task: string,
+    model: string,
+    options: Record<string, unknown>,
+  ) => Promise<unknown>
 }
 
 let generator: Generator | null = null
 let activeModel: AssistantModelId | null = null
-let loading: Promise<void> | null = null
-let loadingModel: AssistantModelId | null = null
+let requestQueue: Promise<void> = Promise.resolve()
 
 const send = (message: AssistantWorkerResponse) => self.postMessage(message)
 
-async function loadModel(model: AssistantModelId) {
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback
+}
+
+async function replaceGenerator(nextGenerator: Generator, model: AssistantModelId) {
+  const previousGenerator = generator
+  generator = nextGenerator
+  activeModel = model
+  if (previousGenerator && previousGenerator !== nextGenerator) {
+    try {
+      await previousGenerator.dispose?.()
+    } catch {
+      // Releasing the superseded model is best-effort and must not invalidate the new model.
+    }
+  }
+}
+
+async function loadModel(
+  model: AssistantModelId,
+  requestId: AssistantRequestId,
+  announceReady = true,
+) {
   if (generator && activeModel === model) {
-    send({ type: 'ready', model })
+    if (announceReady) send({ type: 'ready', requestId, model })
     return
   }
-  if (loading && loadingModel === model) return loading
 
-  generator = null
-  activeModel = null
-  loadingModel = model
-  loading = (async () => {
-    try {
-      send({ type: 'loading', model, progress: 0 })
-      const transformers = await import(/* @vite-ignore */ TRANSFORMERS_URL)
-      transformers.env.allowLocalModels = false
-      generator = (await transformers.pipeline('text-generation', MODELS[model], {
-        device: 'webgpu',
-        dtype: 'q4f16',
-        progress_callback: (event: { status?: string; loaded?: number; total?: number }) => {
-          if (event.status === 'progress' && event.loaded && event.total) {
-            send({ type: 'loading', model, progress: Math.min(1, event.loaded / event.total) })
-          }
-        },
-      })) as Generator
-      activeModel = model
-      send({ type: 'ready', model })
-    } catch (error) {
-      generator = null
-      activeModel = null
-      send({
-        type: 'error',
-        model,
-        message: error instanceof Error ? error.message : 'Model loading failed.',
-      })
-      throw error
-    } finally {
-      loading = null
-      loadingModel = null
-    }
-  })()
-
-  return loading
+  send({ type: 'loading', requestId, model, progress: 0 })
+  const transformers = await import(/* @vite-ignore */ TRANSFORMERS_URL) as TransformersModule
+  transformers.env.allowLocalModels = false
+  const nextGenerator = (await transformers.pipeline('text-generation', MODELS[model], {
+    device: 'webgpu',
+    dtype: 'q4f16',
+    progress_callback: (event: { status?: string; loaded?: number; total?: number }) => {
+      if (
+        event.status === 'progress' &&
+        typeof event.loaded === 'number' &&
+        typeof event.total === 'number' &&
+        event.total > 0
+      ) {
+        send({
+          type: 'loading',
+          requestId,
+          model,
+          progress: Math.max(0, Math.min(1, event.loaded / event.total)),
+        })
+      }
+    },
+  })) as Generator
+  await replaceGenerator(nextGenerator, model)
+  if (announceReady) send({ type: 'ready', requestId, model })
 }
 
-function finalText(output: Array<{ generated_text?: string | Array<{ role: string; content: string }> }>) {
+export function finalAssistantText(
+  output: Array<{ generated_text?: string | Array<{ role: string; content: string }> }>,
+) {
   const generated = output[0]?.generated_text
-  if (Array.isArray(generated)) return generated.at(-1)?.content ?? ''
-  return typeof generated === 'string' ? generated : ''
+  if (Array.isArray(generated)) return generated.at(-1)?.content?.trim() ?? ''
+  return typeof generated === 'string' ? generated.trim() : ''
 }
 
-async function answer(model: AssistantModelId, systemPrompt: string, messages: ChatTurn[]) {
-  await loadModel(model)
-  if (!generator || activeModel !== model) throw new Error('Model unavailable.')
+async function answer(request: Extract<AssistantWorkerRequest, { type: 'ask' }>) {
+  await loadModel(request.model, request.requestId, false)
+  const currentGenerator = generator
+  if (!currentGenerator || activeModel !== request.model) throw new Error('Model unavailable.')
 
-  const output = await generator(
-    [{ role: 'system', content: systemPrompt }, ...messages.slice(-6)],
+  const output = await currentGenerator(
+    [{ role: 'system', content: request.systemPrompt }, ...request.messages.slice(-6)],
     {
-      max_new_tokens: model === 'gemma-270m' ? 220 : 300,
+      max_new_tokens: request.model === 'gemma-270m' ? 220 : 300,
       do_sample: false,
       repetition_penalty: 1.12,
     },
   )
-  send({ type: 'done', fallbackText: finalText(output).trim() })
+  const text = finalAssistantText(output)
+  send({
+    type: 'done',
+    requestId: request.requestId,
+    model: request.model,
+    text,
+    fallbackText: text,
+  })
 }
 
-self.addEventListener('message', (event: MessageEvent<AssistantWorkerRequest>) => {
-  if (event.data.type === 'load') {
-    void loadModel(event.data.model)
+async function handleRequest(request: AssistantWorkerRequest) {
+  try {
+    if (request.type === 'load') {
+      await loadModel(request.model, request.requestId)
+    } else {
+      await answer(request)
+    }
+  } catch (error) {
+    const phase = request.type === 'load' || activeModel !== request.model ? 'load' : 'generate'
+    if (phase === 'load') {
+      generator = null
+      activeModel = null
+    }
+    send({
+      type: 'error',
+      requestId: request.requestId,
+      model: request.model,
+      phase,
+      message: errorMessage(error, phase === 'load' ? 'Model loading failed.' : 'Generation failed.'),
+      recoverable: true,
+    })
+  }
+}
+
+self.addEventListener('message', (event: MessageEvent<unknown>) => {
+  if (!isAssistantWorkerRequest(event.data)) {
+    const candidate = event.data && typeof event.data === 'object'
+      ? event.data as { requestId?: unknown; model?: unknown }
+      : null
+    send({
+      type: 'error',
+      requestId: typeof candidate?.requestId === 'string' ? candidate.requestId : '__invalid__',
+      phase: 'protocol',
+      message: 'Invalid assistant worker request.',
+      recoverable: false,
+    })
     return
   }
 
-  void answer(event.data.model, event.data.systemPrompt, event.data.messages).catch((error) => {
-    send({
-      type: 'error',
-      model: event.data.model,
-      message: error instanceof Error ? error.message : 'Generation failed.',
-    })
+  const request = event.data
+  // Transformers pipelines and model replacement are not concurrency-safe. Serializing requests
+  // also makes a model switch deterministic while request IDs let the UI ignore stale replies.
+  requestQueue = requestQueue.then(() => handleRequest(request)).catch(() => {
+    // handleRequest contains its own error boundary; keep the queue usable if that ever regresses.
   })
 })

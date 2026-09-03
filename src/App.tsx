@@ -1275,6 +1275,10 @@ function App() {
         </a>
 
         <div className="header-actions">
+          <a className="mobile-assistant-link" href="#assistente">
+            <span aria-hidden="true">✦</span>
+            {copy.assistantNav}
+          </a>
           <nav aria-label={copy.navigation}>
             <a href="#assistente">{copy.assistantNav}</a>
             <a href="#strumenti">{copy.toolsNav}</a>

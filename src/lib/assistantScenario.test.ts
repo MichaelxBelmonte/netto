@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { calculateEmployerCost } from './employerCost'
 import { getMunicipality } from './localTaxes'
-import { resolveAssistantScenario } from './assistantScenario'
+import { findMentionedSalaries, resolveAssistantScenario } from './assistantScenario'
 import { calculateSalaryProjection } from './tax'
 import type { AssistantSnapshot } from './assistantContext'
 
@@ -56,5 +56,20 @@ describe('assistant dynamic scenarios', () => {
 
     expect(scenario.result.grossAnnualSalary).toBe(50_000)
     expect(scenario.result.municipalityName).toBe('Firenze')
+  })
+
+  it('extracts two salary values in the order requested', () => {
+    expect(findMentionedSalaries('differenza tra 35k ral e 50k ral')).toEqual([35_000, 50_000])
+    expect(findMentionedSalaries('tra 50 e 35 cosa cambia')).toEqual([50_000, 35_000])
+  })
+
+  it('calculates the requested pair rather than reusing the default comparison', () => {
+    const upward = resolveAssistantScenario('differenza tra 35k ral e 50k ral', base)
+    expect(upward.result.grossAnnualSalary).toBe(35_000)
+    expect(upward.comparison?.grossAnnualSalary).toBe(50_000)
+
+    const downward = resolveAssistantScenario('tra 50 e 35 cosa cambia', upward)
+    expect(downward.result.grossAnnualSalary).toBe(50_000)
+    expect(downward.comparison?.grossAnnualSalary).toBe(35_000)
   })
 })
