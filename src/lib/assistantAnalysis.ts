@@ -23,6 +23,9 @@ const wantsEmployerCost = (question: string) =>
 const wantsMunicipalityComparison = (question: string) =>
   /(?:comun[ei]|città|citta|municipalit|city|cities|milano|roma|napoli|torino|bologna|palermo)/i.test(question)
 
+const wantsComparisonFollowUp = (question: string) =>
+  /(?:spiega|meglio|approfond|differenza|confront|cosa cambia|explain|clarify|compare|difference)/i.test(question)
+
 export function buildDeterministicAssistantPlan(
   question: string,
   snapshot: AssistantSnapshot,
@@ -30,7 +33,11 @@ export function buildDeterministicAssistantPlan(
   const mentionedSalaries = findMentionedSalaries(question)
   const mentionedMunicipalities = findMentionedMunicipalities(question)
   return {
-    salaries: mentionedSalaries.length ? mentionedSalaries : [snapshot.result.grossAnnualSalary],
+    salaries: mentionedSalaries.length
+      ? mentionedSalaries
+      : wantsComparisonFollowUp(question) && snapshot.comparison
+        ? [snapshot.result.grossAnnualSalary, snapshot.comparison.grossAnnualSalary]
+        : [snapshot.result.grossAnnualSalary],
     municipalityCodes: mentionedMunicipalities.length
       ? mentionedMunicipalities.map((item) => item.c)
       : wantsMunicipalityComparison(question)
@@ -168,9 +175,23 @@ export function buildAssistantAnalysis(
     const sorted = [...scenarios].sort((a, b) => b.projection.annualNet - a.projection.annualNet)
     const best = sorted[0] ?? baseline
     const worst = sorted.at(-1) ?? baseline
+    const scenarioSummary = scenarios.length <= 8
+      ? scenarios.map(({ projection }) =>
+          `${currency.format(projection.grossAnnualSalary)} · ${projection.municipalityName}: ${currency.format(projection.annualNet)} ${it ? 'netti annui' : 'annual net'}`,
+        ).join('\n')
+      : ''
+    const employerSummary = salaries.length >= 2
+      ? (() => {
+          const firstCost = calculateEmployerCost(salaries[0] ?? snapshot.result.grossAnnualSalary, employerProfile).totalCost
+          const lastCost = calculateEmployerCost(salaries.at(-1) ?? snapshot.result.grossAnnualSalary, employerProfile).totalCost
+          return it
+            ? `Costo azienda: ${currency.format(firstCost)} → ${currency.format(lastCost)} (${currency.format(lastCost - firstCost)}).`
+            : `Employer cost: ${currency.format(firstCost)} -> ${currency.format(lastCost)} (${currency.format(lastCost - firstCost)}).`
+        })()
+      : ''
     fallback = it
-      ? `Tra gli scenari richiesti, il netto più alto è ${currency.format(best.projection.annualNet)} a ${best.projection.municipalityName}; il più basso è ${currency.format(worst.projection.annualNet)} a ${worst.projection.municipalityName}. La differenza è ${currency.format(best.projection.annualNet - worst.projection.annualNet)} all’anno.`
-      : `Across the requested scenarios, the highest annual net is ${currency.format(best.projection.annualNet)} in ${best.projection.municipalityName}; the lowest is ${currency.format(worst.projection.annualNet)} in ${worst.projection.municipalityName}. The yearly difference is ${currency.format(best.projection.annualNet - worst.projection.annualNet)}.`
+      ? `${scenarioSummary}\nTra gli scenari richiesti, il netto più alto è ${currency.format(best.projection.annualNet)} a ${best.projection.municipalityName}; il più basso è ${currency.format(worst.projection.annualNet)} a ${worst.projection.municipalityName}. Differenza: ${currency.format(best.projection.annualNet - worst.projection.annualNet)} all’anno. ${employerSummary}`.trim()
+      : `${scenarioSummary}\nAcross the requested scenarios, the highest annual net is ${currency.format(best.projection.annualNet)} in ${best.projection.municipalityName}; the lowest is ${currency.format(worst.projection.annualNet)} in ${worst.projection.municipalityName}. Difference: ${currency.format(best.projection.annualNet - worst.projection.annualNet)} per year. ${employerSummary}`.trim()
   } else {
     const item = baseline
     fallback = it

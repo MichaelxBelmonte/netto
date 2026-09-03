@@ -192,8 +192,8 @@ export function AssistantPage({
           const analysis = buildAssistantAnalysis(questionForPlan, snapshotForPlan, plan)
           const answerRequestId = createAssistantRequestId()
           activeRequestRef.current = answerRequestId
-          pendingFallbackRef.current = `${UI[snapshotForPlan.language].modelFallback} ${analysis.fallback}`
-          pendingContextRef.current = `${buildAssistantContext(snapshotForPlan)}\n${analysis.context}\nVERIFIED ENGINE DRAFT — answer the user's exact request intelligently, compare all requested scenarios, and preserve every figure:\n${analysis.fallback}`
+          pendingFallbackRef.current = analysis.fallback
+          pendingContextRef.current = `${buildAssistantContext(snapshotForPlan)}\n${analysis.context}\nVERIFIED ENGINE SUMMARY — this will already be shown to the user:\n${analysis.fallback}\nAdd a concise interpretation of the implications. Do not repeat the full numerical summary.`
           postWorkerMessage({
             type: 'ask',
             requestId: answerRequestId,
@@ -210,7 +210,7 @@ export function AssistantPage({
           next[next.length - 1] = {
             role: 'assistant',
             content: isPlausibleAssistantReply(generated, pendingContextRef.current)
-              ? generated
+              ? `${pendingFallbackRef.current}\n\n${generated}`
               : pendingFallbackRef.current,
           }
           return next
@@ -336,7 +336,7 @@ export function AssistantPage({
     pendingSnapshotRef.current = nextSnapshot
     pendingPlanRef.current = fallbackPlan
     pendingMessagesRef.current = nextMessages
-    pendingFallbackRef.current = `${UI[responseLanguage].modelFallback} ${fallbackAnalysis.fallback}`
+    pendingFallbackRef.current = fallbackAnalysis.fallback
     setMessages([...nextMessages, { role: 'assistant', content: '' }])
     setDraft('')
     setAiState('thinking')
