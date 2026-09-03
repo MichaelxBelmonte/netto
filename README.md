@@ -15,12 +15,12 @@ Il progetto nasce per il task del ruolo AI Builder di Jet HR. La scelta distinti
 - confronta la stessa RAL tra città e rende visibile l’effetto della fiscalità locale
 - offre un atlante fiscale interattivo, visibile anche senza aver scelto un Comune
 - mostra quanto resta dei successivi 1.000 € lordi
+- confronta due RAL mantenendo invariati Comune e mensilità
+- scarica un riepilogo PDF compatto del calcolo e del confronto
 - affianca il costo per l’azienda: contributi a suo carico, INAIL e TFR per settore e dimensione, e la quota del costo che arriva netta al dipendente
 - collega norme, dataset e scheda MEF del Comune selezionato
 - genera un link condivisibile del calcolo (`?ral=35000&comune=F205&mensilita=13`, con `&lang=en` per l’inglese)
 - funziona in italiano e inglese, con un flusso mobile dedicato
-
-«Quanto vali?» è dichiarata in roadmap anche nell’interfaccia: nessun numero finché non esiste un dataset retributivo difendibile.
 
 ## Copertura dei dati
 
@@ -81,6 +81,8 @@ npm run map:update
 - `src/lib/tax.ts`: motore nazionale, funzione pura senza dipendenze dalla UI
 - `src/lib/localTaxes.ts`: aliquote regionali, ricerca per rilevanza e calcolo comunale
 - `src/lib/employerCost.ts`: costo del lavoro a carico dell’azienda, con la fonte e il livello di confidenza di ogni voce
+- `src/lib/salaryComparison.ts`: differenze tra due proiezioni sullo stesso profilo fiscale
+- `src/lib/salaryReport.ts`: modello e generazione lazy del riepilogo PDF
 - `src/components/TaxMap.tsx`: proiezione SVG, distribuzione e selezione territoriale
 - `src/data/`: snapshot fiscali, metadati e confini ISTAT semplificati
 - `scripts/build-tax-data.mjs`: download, normalizzazione, validazione degli scaglioni, regola 2025 e quality flags

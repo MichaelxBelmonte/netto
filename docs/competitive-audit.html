@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Audit competitivo dei repository pubblici realizzati per il task AI Builder / Product Builder di Jet HR. Snapshot del 3 settembre 2026."
+    />
+    <title>netto. — Audit competitivo Jet HR</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f5f3eb;
+        --panel: #fffdf7;
+        --ink: #172119;
+        --muted: #667067;
+        --line: #c9cbbf;
+        --green: #1f5d3a;
+        --green-soft: #dfeadd;
+        --amber: #8b5d16;
+        --amber-soft: #f2e8ce;
+        --red: #8d302b;
+        --red-soft: #f1ddda;
+        --max: 1240px;
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 16px/1.55 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      a { color: inherit; text-underline-offset: 3px; }
+      button, input, select { font: inherit; }
+      code {
+        padding: 0.12em 0.35em;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.55);
+        font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .wrap { width: min(calc(100% - 36px), var(--max)); margin: 0 auto; }
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        border-bottom: 1px solid var(--ink);
+        background: rgba(245, 243, 235, 0.94);
+        backdrop-filter: blur(10px);
+      }
+      .topbar .wrap {
+        min-height: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+      .brand { font-weight: 900; letter-spacing: -0.05em; white-space: nowrap; }
+      nav { display: flex; gap: 18px; overflow-x: auto; white-space: nowrap; font-size: 0.8rem; }
+      nav a { text-decoration: none; }
+      nav a:hover { text-decoration: underline; }
+      header { padding: 76px 0 52px; border-bottom: 1px solid var(--ink); }
+      .eyebrow {
+        margin: 0 0 18px;
+        font-size: 0.74rem;
+        font-weight: 850;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      h1, h2, h3 { letter-spacing: -0.035em; }
+      h1 { max-width: 940px; margin: 0; font-size: clamp(2.6rem, 7vw, 6.2rem); line-height: 0.93; }
+      h1 span { color: var(--muted); }
+      h2 { margin: 0 0 14px; font-size: clamp(1.8rem, 4vw, 3rem); line-height: 1.04; }
+      h3 { margin: 0 0 9px; font-size: 1.14rem; line-height: 1.25; }
+      p { margin: 0 0 14px; }
+      .lead { max-width: 800px; margin: 28px 0 0; font-size: clamp(1.1rem, 2vw, 1.4rem); }
+      .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+      .pill {
+        padding: 5px 11px;
+        border: 1px solid var(--ink);
+        border-radius: 99px;
+        font-size: 0.75rem;
+        font-weight: 750;
+      }
+      main > section { padding: 66px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 58px; }
+      .intro { max-width: 780px; margin-bottom: 32px; color: var(--muted); font-size: 1.06rem; }
+      .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--ink); }
+      .stat { min-height: 150px; padding: 20px; border-right: 1px solid var(--ink); }
+      .stat:last-child { border-right: 0; }
+      .stat strong { display: block; margin-bottom: 24px; font-size: clamp(2.1rem, 4vw, 3.5rem); line-height: 1; }
+      .stat span { display: block; color: var(--muted); font-size: 0.82rem; }
+      .callout {
+        margin: 28px 0 0;
+        padding: 24px;
+        background: var(--ink);
+        color: var(--panel);
+      }
+      .callout strong { display: block; margin-bottom: 5px; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      .card { padding: 23px; border: 1px solid var(--ink); background: var(--panel); }
+      .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+      .card ul { margin: 12px 0 0; padding-left: 20px; }
+      .card li { margin-bottom: 6px; }
+      .rank { display: inline-block; margin-bottom: 23px; color: var(--muted); font: 750 0.74rem/1 ui-monospace, monospace; }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 2px 8px;
+        border: 1px solid currentColor;
+        border-radius: 99px;
+        font-size: 0.68rem;
+        font-weight: 850;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .a { color: var(--green); background: var(--green-soft); }
+      .b { color: var(--amber); background: var(--amber-soft); }
+      .c { color: #5f655f; background: #e8e8e2; }
+      .d { color: var(--red); background: var(--red-soft); }
+      .live { color: var(--green); }
+      .unknown { color: var(--muted); }
+      .matrix-wrap, .table-wrap { overflow-x: auto; border: 1px solid var(--ink); background: var(--panel); }
+      table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+      th, td { padding: 12px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+      th {
+        position: sticky;
+        top: 57px;
+        z-index: 4;
+        background: var(--ink);
+        color: var(--panel);
+        font-size: 0.69rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      tr:last-child td { border-bottom: 0; }
+      tr.ours td { background: var(--green-soft); }
+      td.number { font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .status-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
+      .status-box { padding: 18px; border: 1px solid var(--line); background: var(--panel); }
+      .status-box strong { display: block; font-size: 1.55rem; }
+      .roadmap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+      .roadmap article { position: relative; padding: 24px; border: 1px solid var(--ink); background: var(--panel); }
+      .priority { display: inline-block; margin-bottom: 36px; font: 850 0.72rem/1 ui-monospace, monospace; }
+      .priority.now { color: var(--red); }
+      .priority.next { color: var(--amber); }
+      .priority.later { color: var(--green); }
+      .roadmap ol, .roadmap ul { margin: 14px 0 0; padding-left: 20px; }
+      .roadmap li { margin-bottom: 8px; }
+      .filters {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) 210px;
+        gap: 10px;
+        margin: 24px 0 14px;
+      }
+      .filters input, .filters select {
+        width: 100%;
+        min-height: 44px;
+        padding: 9px 12px;
+        border: 1px solid var(--ink);
+        border-radius: 0;
+        background: var(--panel);
+        color: var(--ink);
+      }
+      .result-count { margin: 0 0 10px; color: var(--muted); font-size: 0.8rem; }
+      .method { counter-reset: method; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .method .card::before {
+        counter-increment: method;
+        content: "0" counter(method);
+        display: block;
+        margin-bottom: 30px;
+        color: var(--muted);
+        font: 800 0.75rem/1 ui-monospace, monospace;
+      }
+      footer { padding: 42px 0 70px; color: var(--muted); font-size: 0.82rem; }
+      .print-note { display: none; }
+
+      @media (max-width: 900px) {
+        .stats { grid-template-columns: repeat(2, 1fr); }
+        .stat { border-bottom: 1px solid var(--ink); }
+        .stat:nth-child(2n) { border-right: 0; }
+        .stat:last-child { grid-column: 1 / -1; border-bottom: 0; }
+        .grid, .roadmap, .method { grid-template-columns: 1fr; }
+        .status-list { grid-template-columns: repeat(2, 1fr); }
+      }
+      @media (max-width: 620px) {
+        .wrap { width: min(calc(100% - 24px), var(--max)); }
+        .topbar nav { display: none; }
+        header { padding: 54px 0 38px; }
+        main > section { padding: 48px 0; }
+        .stats, .status-list, .filters { grid-template-columns: 1fr; }
+        .stat { border-right: 0; }
+        .stat:last-child { grid-column: auto; }
+      }
+      @media print {
+        .topbar, .filters { display: none; }
+        body { background: #fff; font-size: 11px; }
+        header, main > section { padding: 24px 0; }
+        .wrap { width: 100%; }
+        .card, .matrix-wrap, .table-wrap, .roadmap article { break-inside: avoid; }
+        .print-note { display: block; }
+        th { position: static; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="wrap">
+        <div class="brand">netto.</div>
+        <nav aria-label="Navigazione del report">
+          <a href="#quadro">Quadro</a>
+          <a href="#top">Top</a>
+          <a href="#confronto">Confronto</a>
+          <a href="#forze">Punti di forza</a>
+          <a href="#migliorare">Migliorare</a>
+          <a href="#inventario">Inventario</a>
+          <a href="#metodo">Metodo</a>
+        </nav>
+      </div>
+    </div>
+
+    <header>
+      <div class="wrap">
+        <p class="eyebrow">Competitive audit · Jet HR AI Builder</p>
+        <h1>Uno stesso task.<br /><span>Ottantacinque risposte pubbliche.</span></h1>
+        <p class="lead">
+          Stato dei repository pubblicamente riconducibili al calcolatore RAL → netto 2026,
+          con una lettura pratica: chi è davvero forte, dove si colloca <strong>netto.</strong>
+          e cosa conviene migliorare senza perdere il controllo del perimetro.
+        </p>
+        <div class="meta">
+          <span class="pill">Snapshot 3 settembre 2026</span>
+          <span class="pill">85 repository confermati</span>
+          <span class="pill">83 account distinti</span>
+          <span class="pill">Analisi statica + stato pubblico</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="quadro">
+        <div class="wrap">
+          <p class="eyebrow">01 · Il campo</p>
+          <h2>Molti prototipi. Pochi repository davvero verificabili.</h2>
+          <p class="intro">
+            Sono stati recuperati 88 repository: 85 sono attribuibili al task Jet HR e tre sono
+            stati esclusi dal conteggio perché simili per tema e data, ma privi di un riferimento
+            sufficiente alla candidatura. Repository privati, cancellati o non indicizzati non sono osservabili.
+          </p>
+
+          <div class="stats" aria-label="Metriche del censimento">
+            <div class="stat"><strong>85</strong><span>repository confermati come task Jet HR</span></div>
+            <div class="stat"><strong>54+</strong><span>demo che hanno restituito HTTP 200 durante l’audit</span></div>
+            <div class="stat"><strong>42</strong><span>repository con almeno un artefatto di test</span></div>
+            <div class="stat"><strong>27</strong><span>repository con almeno due file di test</span></div>
+            <div class="stat"><strong>6</strong><span>repository con CI GitHub Actions versionata</span></div>
+          </div>
+
+          <div class="status-list">
+            <div class="status-box"><strong>22</strong><span>citano insieme Normattiva, MEF e INPS</span></div>
+            <div class="status-box"><strong>14</strong><span>raggiungono la fascia più alta della griglia documentale</span></div>
+            <div class="status-box"><strong>6</strong><span>aggiornati ancora tra il 1º e il 3 settembre</span></div>
+            <div class="status-box"><strong>1</strong><span>repository realmente incompleto: solo un README di 22 byte</span></div>
+          </div>
+
+          <div class="callout">
+            <strong>Quello che questi numeri non dicono</strong>
+            La quantità di test o file non prova da sola la correttezza fiscale. La classificazione misura
+            soprattutto quanta evidenza pubblica offre ogni repository: codice, test, fonti, CI e deploy.
+          </div>
+        </div>
+      </section>
+
+      <section id="top">
+        <div class="wrap">
+          <p class="eyebrow">02 · I confronti utili</p>
+          <h2>I progetti da studiare davvero.</h2>
+          <p class="intro">
+            Non sono una classifica assoluta. Sono i repository che, per ampiezza, verificabilità o qualità
+            di prodotto, rappresentano il confronto più informativo per <strong>netto.</strong>
+          </p>
+
+          <div class="grid">
+            <article class="card">
+              <span class="rank">01 · Confronto diretto</span>
+              <h3><a href="https://github.com/Mattialicciardi/jet-hr-ral-netto">Mattialicciardi / jet-hr-ral-netto</a></h3>
+              <p>7.897 comuni, documentazione ampia, deploy attivo e circa 177 casi di test rilevati.</p>
+              <p><strong>Da osservare:</strong> matrice di validazione, copertura locale e configuratore progressivo.</p>
+            </article>
+            <article class="card">
+              <span class="rank">02 · Dati e metodo</span>
+              <h3><a href="https://github.com/teodea/jethr-task">teodea / jethr-task</a></h3>
+              <p>7.896 comuni, importazione dati, circa 131 test, assunzioni molto documentate e demo attiva.</p>
+              <p><strong>Da osservare:</strong> come rende ispezionabili eccezioni e limiti del dato MEF.</p>
+            </article>
+            <article class="card">
+              <span class="rank">03 · Motore molto testato</span>
+              <h3><a href="https://github.com/MikeArdo/Jet-HR-RAL-calculator">MikeArdo / Jet-HR-RAL-calculator</a></h3>
+              <p>7.896 comuni e circa 110 test. Il codice è strutturato; il deploy dichiarato non risolveva durante l’audit.</p>
+              <p><strong>Da osservare:</strong> test locali e ADR, non lo stato del deploy.</p>
+            </article>
+            <article class="card">
+              <span class="rank">04 · Evoluzione post-task</span>
+              <h3><a href="https://github.com/ricca91/jethr-riccardosartori">ricca91 / jethr-riccardosartori</a></h3>
+              <p>Circa 193 test, dati nazionali e prodotto live, cresciuto attraverso ticket e feedback pubblici.</p>
+              <p><strong>Contesto essenziale:</strong> il README dichiara che la candidatura fu respinta prima di questa evoluzione.</p>
+            </article>
+            <article class="card">
+              <span class="rank">05 · Ambizione di prodotto</span>
+              <h3><a href="https://github.com/Dema-om/jet-netto">Dema-om / jet-netto</a></h3>
+              <p>Copertura nazionale, mappa, costo azienda, report PDF e molte opzioni di scenario. Demo attiva.</p>
+              <p><strong>Da osservare:</strong> la presentazione del valore per dipendente e azienda.</p>
+            </article>
+            <article class="card">
+              <span class="rank">06 · Profili e documentazione</span>
+              <h3><a href="https://github.com/Miccio13/calcolatore-ral-netto-jethr">Miccio13 / calcolatore-ral-netto-jethr</a></h3>
+              <p>Circa 105 test, documentazione profonda e input per famiglia, welfare e apprendistato.</p>
+              <p><strong>Trade-off:</strong> copertura comunale più limitata e nessun deploy verificato.</p>
+            </article>
+            <article class="card">
+              <span class="rank">07 · Tracciabilità</span>
+              <h3><a href="https://github.com/K3np4chi/jethr-calc">K3np4chi / jethr-calc</a></h3>
+              <p>Circa 80 test, fonti ben strutturate, metodologia esplicita e demo attiva.</p>
+              <p><strong>Da osservare:</strong> la disciplina nel separare regole, assunzioni e fonti.</p>
+            </article>
+            <article class="card">
+              <span class="rank">08 · Engineering</span>
+              <h3><a href="https://github.com/roi12/jet-hr-net-salary-calculator">roi12 / jet-hr-net-salary-calculator</a></h3>
+              <p>Circa 72 test, architettura e documentazione curate, con deploy attivo.</p>
+              <p><strong>Da osservare:</strong> struttura del dominio e terminologia.</p>
+            </article>
+            <article class="card">
+              <span class="rank">09 · Discovery</span>
+              <h3><a href="https://github.com/luciademoja-lab/jethr-calcolatore-netto">luciademoja / jethr-calcolatore-netto</a></h3>
+              <p>Circa 44 test, ottimo lavoro di discovery normativa e verifica incrociata. Demo attiva.</p>
+              <p><strong>Da osservare:</strong> il modo in cui trasforma le semplificazioni in decisioni difendibili.</p>
+            </article>
+            <article class="card">
+              <span class="rank">10 · CI visibile</span>
+              <h3><a href="https://github.com/KarlaMons/nettochiaro">KarlaMons / nettochiaro</a></h3>
+              <p>16 file di test, CI verde e repository molto verificabile, pur con un perimetro più standard.</p>
+              <p><strong>Da osservare:</strong> prova automatica visibile già dalla pagina GitHub.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="confronto">
+        <div class="wrap">
+          <p class="eyebrow">03 · Posizionamento</p>
+          <h2>Dove si colloca netto.</h2>
+          <p class="intro">
+            I casi di test dei concorrenti sono una stima statica; i 52 test di <strong>netto.</strong> sono invece
+            stati eseguiti localmente durante l’audit, insieme a typecheck e build.
+          </p>
+
+          <div class="matrix-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Progetto</th>
+                  <th>Territorio</th>
+                  <th>Test rilevati</th>
+                  <th>Deploy</th>
+                  <th>Vantaggio principale</th>
+                  <th>Limite rilevante</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="ours">
+                  <td><strong>netto.</strong></td>
+                  <td>7.897 voci fiscali, 21 giurisdizioni</td>
+                  <td class="number"><strong>52 passati</strong></td>
+                  <td><a class="live" href="https://michaelxbelmonte.github.io/netto/">Live + CI verde</a></td>
+                  <td>Freschezza del dato, provenienza per Comune, atlante e confronto città</td>
+                  <td>Matrice test meno estesa dei repository più testati; prova di qualità poco visibile nella UI</td>
+                </tr>
+                <tr>
+                  <td><a href="https://github.com/Mattialicciardi/jet-hr-ral-netto">Mattialicciardi</a></td>
+                  <td>7.897 comuni</td>
+                  <td class="number">≈177</td>
+                  <td class="live">Live</td>
+                  <td>Copertura + validazione ampia</td>
+                  <td>Esperienza più configurativa e più complessa</td>
+                </tr>
+                <tr>
+                  <td><a href="https://github.com/teodea/jethr-task">teodea</a></td>
+                  <td>7.896 comuni</td>
+                  <td class="number">≈131</td>
+                  <td class="live">Live</td>
+                  <td>Metodo e gestione esplicita delle anomalie</td>
+                  <td>Repository molto esteso per un prototipo</td>
+                </tr>
+                <tr>
+                  <td><a href="https://github.com/MikeArdo/Jet-HR-RAL-calculator">MikeArdo</a></td>
+                  <td>7.896 comuni</td>
+                  <td class="number">≈110</td>
+                  <td class="unknown">Non verificato</td>
+                  <td>ADR e test del motore</td>
+                  <td>Deploy dichiarato non raggiungibile</td>
+                </tr>
+                <tr>
+                  <td><a href="https://github.com/ricca91/jethr-riccardosartori">ricca91</a></td>
+                  <td>Nazionale nella versione corrente</td>
+                  <td class="number">≈193</td>
+                  <td class="live">Live</td>
+                  <td>Evoluzione guidata da feedback reale</td>
+                  <td>La versione corrente non rappresenta quella valutata da Jet HR</td>
+                </tr>
+                <tr>
+                  <td><a href="https://github.com/Dema-om/jet-netto">Dema</a></td>
+                  <td>Nazionale</td>
+                  <td class="number">Test custom</td>
+                  <td class="live">Live</td>
+                  <td>Ampiezza di prodotto, PDF e vista azienda</td>
+                  <td>Perimetro più largo e più difficile da verificare semanticamente</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="callout">
+            <strong>Lettura sintetica</strong>
+            <strong>netto.</strong> è nel gruppo di testa, indicativamente nella fascia 5–10 per solidità complessiva.
+            Non domina sul volume dei test o sul numero di profili personali; è invece particolarmente forte quando
+            si considerano insieme copertura nazionale, data freshness, trasparenza della singola regola e qualità dell’esperienza territoriale.
+          </div>
+        </div>
+      </section>
+
+      <section id="forze">
+        <div class="wrap">
+          <p class="eyebrow">04 · Il nostro vantaggio</p>
+          <h2>I punti di forza di netto. contro la top 10.</h2>
+          <p class="intro">
+            Non sono claim astratti: ciascun vantaggio è collegato a un comportamento osservabile,
+            a un dato versionato o a una verifica ripetibile. È questa la parte da rendere più evidente
+            nella demo e da portare al colloquio.
+          </p>
+
+          <div class="grid">
+            <article class="card">
+              <span class="rank">01 · Combinazione unica</span>
+              <h3>Nazionale, live e con CI verde</h3>
+              <p>
+                Tra i dieci confronti principali, <strong>netto.</strong> è l’unico che combina copertura
+                comunale nazionale, demo verificata e workflow CI versionato e verde.
+              </p>
+              <p><strong>Contro:</strong> Mattialicciardi e teodea sono nazionali e live ma senza CI pubblica; Karla ha CI, ma non copertura nazionale.</p>
+            </article>
+
+            <article class="card">
+              <span class="rank">02 · Dato più fresco</span>
+              <h3>Snapshot al 3 settembre, non “regole 2026” generiche</h3>
+              <p>
+                Il registro MEF è stato acquisito e verificato il giorno dell’audit. I principali concorrenti
+                espongono snapshot o verifiche tra il 7 e il 31 agosto; alcuni usano elenchi ancora precedenti.
+              </p>
+              <p><strong>Perché conta:</strong> una regola fiscale annuale può comunque cambiare durante l’anno, soprattutto a livello comunale.</p>
+            </article>
+
+            <article class="card">
+              <span class="rank">03 · Provenienza per record</span>
+              <h3>Ogni Comune porta anno, stato e fonte</h3>
+              <p>
+                La UI distingue delibera 2026, regola 2025 prorogata per legge e dato non disponibile,
+                aprendo la scheda MEF sull’anno effettivamente usato.
+              </p>
+              <p><strong>Contro:</strong> molti progetti citano il dataset MEF in generale; pochi rendono visibile la provenienza della singola regola nel risultato.</p>
+            </article>
+
+            <article class="card">
+              <span class="rank">04 · Onestà del dato</span>
+              <h3>Copertura ampia senza nascondere le eccezioni</h3>
+              <p>
+                Il report dichiara 3.133 regole 2026, 4.760 proroghe 2025, 1.490 casi speciali,
+                due scaglioni ricostruiti e quattro voci senza regola utilizzabile.
+              </p>
+              <p><strong>Contro:</strong> Dema assegna un valore tipico a 33 Comuni recenti; netto. preferisce mostrare l’incertezza invece di inventare precisione.</p>
+            </article>
+
+            <article class="card">
+              <span class="rank">05 · Territorio come prodotto</span>
+              <h3>Atlante fiscale, selezione e confronto città</h3>
+              <p>
+                La mappa non è soltanto un selettore geografico: rende esplorabile la distribuzione fiscale,
+                resta utile prima del calcolo e collega territorio, Comune e risultato.
+              </p>
+              <p><strong>Contro:</strong> Dema ha una buona mappa regionale; netto. aggiunge la lettura da atlante e il confronto della stessa RAL fra città.</p>
+            </article>
+
+            <article class="card">
+              <span class="rank">06 · Comprensibilità</span>
+              <h3>Due lingue e un percorso mobile dedicato</h3>
+              <p>
+                L’intera esperienza funziona in italiano e inglese, compresi URL condivisibili e testi fiscali,
+                con un flusso adattato al mobile. Nessuno dei dieci confronti mostra la stessa combinazione completa.
+              </p>
+              <p><strong>Perché conta:</strong> Jet HR serve aziende e lavoratori; il lessico fiscale italiano non deve diventare una barriera per un utente internazionale.</p>
+            </article>
+
+            <article class="card">
+              <span class="rank">07 · Fiducia calibrata</span>
+              <h3>Il costo azienda dichiara cosa è verificato e cosa è ricostruito</h3>
+              <p>
+                Ogni voce datoriale conserva fonte e livello di confidenza. Le aliquote tratte dall’ultima tabella
+                analitica INPS sono marcate “ricostruite”, separate dalle componenti confermate dalla norma.
+              </p>
+              <p><strong>Contro:</strong> diversi top mostrano il costo azienda; netto. espone meglio il diverso grado di affidabilità delle sue componenti.</p>
+            </article>
+
+            <article class="card">
+              <span class="rank">08 · Perimetro disciplinato</span>
+              <h3>Nessun numero senza un dataset difendibile</h3>
+              <p>
+                “Quanto vali?” resta dichiaratamente in roadmap finché non esiste un dataset retributivo adeguato.
+                La scelta dimostra controllo del prodotto, non mancanza di ambizione.
+              </p>
+              <p><strong>Contro:</strong> molti concorrenti allargano CCNL, famiglia o welfare; netto. approfondisce il caso standard senza fingere universalità.</p>
+            </article>
+
+            <article class="card">
+              <span class="rank">09 · Verifica indipendente</span>
+              <h3>I golden case vengono dalla norma, non dal motore stesso</h3>
+              <p>
+                Milano e Roma a più livelli di RAL sono stati ricalcolati a mano, voce per voce, e poi fissati
+                come regressioni. Le 21 aliquote regionali e i venti Comuni più popolosi sono stati confrontati con il MEF.
+              </p>
+              <p><strong>Limite attuale:</strong> questa prova è forte nel README, ma ancora troppo poco visibile nella demo.</p>
+            </article>
+
+            <article class="card">
+              <span class="rank">10 · Manutenibilità reale</span>
+              <h3>Pipeline riproducibile e motori separati</h3>
+              <p>
+                Dati comunali e confini si rigenerano da fonti ufficiali; motore nazionale, fiscalità locale,
+                mappa e costo azienda restano moduli distinti con test dedicati.
+              </p>
+              <p><strong>Contro:</strong> molte soluzioni live sono pagine singole efficaci per la demo, ma più fragili al prossimo aggiornamento fiscale.</p>
+            </article>
+          </div>
+
+          <div class="callout">
+            <strong>La frase che riassume il vantaggio</strong>
+            netto. non prova a simulare ogni cedolino possibile: rende nazionale, aggiornabile e verificabile
+            il caso standard, mostrando all’utente non solo il numero ma anche quanto può fidarsene.
+          </div>
+        </div>
+      </section>
+
+      <section id="migliorare">
+        <div class="wrap">
+          <p class="eyebrow">05 · Dall’audit alle decisioni</p>
+          <h2>Come migliorare senza inseguire ogni concorrente.</h2>
+          <p class="intro">
+            Il segnale più importante dei top non è “aggiungere più input”. È rendere immediatamente visibile
+            che il numero è sotto controllo. La roadmap privilegia quindi prova, racconto e consegna.
+          </p>
+
+          <div class="roadmap">
+            <article>
+              <span class="priority now">P0 · Prima della review</span>
+              <h3>Far vedere la prova</h3>
+              <ul>
+                <li>Aggiungere nella UI una trust strip compatta: snapshot, 7.897 voci, 52 test e CI.</li>
+                <li>Collegare una pagina “Come lo abbiamo verificato” ai golden case già descritti.</li>
+                <li>Aggiungere badge CI e conteggio test nel README, senza trasformarlo in marketing tecnico.</li>
+                <li>Preparare una social preview Open Graph: oggi <code>index.html</code> non dichiara metadata <code>og:*</code>.</li>
+              </ul>
+            </article>
+            <article>
+              <span class="priority next">P1 · Solidità mirata</span>
+              <h3>Allargare la matrice, non il perimetro</h3>
+              <ul>
+                <li>Golden case aggiuntivi sulle soglie 8.500, 15.000, 20.000, 28.000, 32.000, 40.000, 50.000 e 56.224 €.</li>
+                <li>Regressioni su Comuni con esenzione, scaglioni, regola 2025 prorogata e record anomali.</li>
+                <li>Test di proprietà: quadratura delle voci, continuità dove prevista e monotonia fuori dagli scalini legali.</li>
+                <li>Golden case separati per il costo azienda, chiarendo quali aliquote sono ricostruite.</li>
+              </ul>
+            </article>
+            <article>
+              <span class="priority later">P2 · Differenziatori utili</span>
+              <h3>Portare via il risultato</h3>
+              <ul>
+                <li>Vista stampa o PDF leggero del calcolo, prendendo il segnale da Dema e Paulina.</li>
+                <li>Condivisione nativa oltre alla copia del link, con fallback accessibile.</li>
+                <li>Un breve confronto “Milano vs città scelta” dentro il report esportabile.</li>
+                <li>Ottimizzare il bundle solo dopo aver misurato il caricamento reale del dataset nazionale.</li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="grid" style="margin-top: 16px">
+            <article class="card">
+              <h3>Cosa non copiare</h3>
+              <ul>
+                <li>Famiglia, welfare e molti CCNL solo per aumentare il numero di opzioni.</li>
+                <li>Un pannello amministrativo o backend non richiesto dal task.</li>
+                <li>Il numero “Quanto vali?” senza un dataset retributivo difendibile.</li>
+                <li>Test che riconciliano la formula con se stessa senza un valore indipendente.</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>Messaggio da portare al colloquio</h3>
+              <p>
+                “Ho scelto di non modellare ogni busta paga possibile. Ho reso nazionale e verificabile il caso standard,
+                costruendo una pipeline che sa dichiarare quando il dato è 2026, quando è prorogato e quando richiede cautela.”
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="inventario">
+        <div class="wrap">
+          <p class="eyebrow">06 · Inventario completo</p>
+          <h2>Tutti gli 85 repository confermati.</h2>
+          <p class="intro">
+            La fascia indica il livello di evidenza pubblica trovato, non un voto estetico o una previsione sull’esito della candidatura.
+            “Test rilevati” è un conteggio statico approssimativo delle definizioni di test; alcuni repository usano harness custom non rilevabili automaticamente.
+          </p>
+
+          <div class="filters">
+            <label>
+              <span class="eyebrow" style="display:block;margin-bottom:6px">Cerca repository</span>
+              <input id="search" type="search" placeholder="es. teodea, netto, calculator…" autocomplete="off" />
+            </label>
+            <label>
+              <span class="eyebrow" style="display:block;margin-bottom:6px">Livello evidenza</span>
+              <select id="tier">
+                <option value="all">Tutte le fasce</option>
+                <option value="A">A · Alta</option>
+                <option value="B">B · Solida</option>
+                <option value="C">C · Leggera</option>
+                <option value="D">D · Incompleta</option>
+              </select>
+            </label>
+          </div>
+          <p class="result-count" id="result-count" aria-live="polite"></p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Repository</th>
+                  <th>Fascia</th>
+                  <th>Test rilevati</th>
+                  <th>Lettura</th>
+                </tr>
+              </thead>
+              <tbody id="projects"></tbody>
+            </table>
+          </div>
+          <p class="print-note">L’inventario interattivo è stato espanso per la stampa.</p>
+        </div>
+      </section>
+
+      <section id="metodo">
+        <div class="wrap">
+          <p class="eyebrow">07 · Metodo e limiti</p>
+          <h2>Come è stato costruito questo snapshot.</h2>
+          <div class="method">
+            <article class="card">
+              <h3>Ricerca</h3>
+              <p>Query GitHub per “Jet HR”, “JetHR”, RAL, netto 2026, AI Builder e Product Builder. Unione e deduplicazione dei risultati.</p>
+            </article>
+            <article class="card">
+              <h3>Ispezione</h3>
+              <p>Clone temporaneo shallow, lettura di README, alberi dei file, package script, test, workflow, riferimenti alle fonti e metadati pubblici.</p>
+            </article>
+            <article class="card">
+              <h3>Stato pubblico</h3>
+              <p>Controllo di GitHub Pages, homepage dichiarate, demo raggiungibili e ultimi workflow pubblici. Nessun codice concorrente è stato eseguito.</p>
+            </article>
+          </div>
+          <div class="callout">
+            <strong>Limite interpretativo</strong>
+            Lo stato del progetto non coincide con lo stato della candidatura. Solo ricca91 dichiara pubblicamente un esito negativo;
+            per tutti gli altri non è corretto inferire assunzione, rifiuto o avanzamento nel processo.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        Report locale generato per il repository <a href="https://github.com/MichaelxBelmonte/netto">MichaelxBelmonte/netto</a>.
+        Snapshot non ufficiale basato esclusivamente su materiale pubblico disponibile il 3 settembre 2026.
+      </div>
+    </footer>
+
+    <script>
+      const projects = [
+        { n: "Bafffo/jethr-calcolatore-netto", t: "A", x: 2 },
+        { n: "Bafffo/jethr-calcolatore-netto-v2", t: "A", x: null },
+        { n: "CalogeroB/simulatore-ral-netto-2026", t: "A", x: null },
+        { n: "K3np4chi/jethr-calc", t: "A", x: 80 },
+        { n: "Mattialicciardi/jet-hr-ral-netto", t: "A", x: 177 },
+        { n: "Miccio13/calcolatore-ral-netto-jethr", t: "A", x: 105 },
+        { n: "Ruzzo76/jet-hr-task", t: "A", x: 16 },
+        { n: "StefanoSpigariol/calcolatore-netto-ral", t: "A", x: null },
+        { n: "TechOrdyto/ral-netto-2026", t: "A", x: 21 },
+        { n: "automatico-systems/calcolatore-ral-netto", t: "A", x: 4 },
+        { n: "matterconi/jet-hr-product-builder", t: "A", x: 13 },
+        { n: "paulinarodp/Valore", t: "A", x: 44 },
+        { n: "ricca91/jethr-riccardosartori", t: "A", x: 193 },
+        { n: "teodea/jethr-task", t: "A", x: 131 },
+
+        { n: "Dema-om/jet-netto", t: "B", x: null },
+        { n: "GabrielePecchioli/calcolatore-netto-jethr", t: "B", x: 40 },
+        { n: "Jockeys97/ral-netto-jet-hr", t: "B", x: 5 },
+        { n: "KarlaMons/nettochiaro", t: "B", x: 31 },
+        { n: "LL-Drepano/ral-netto-2026_JETHR", t: "B", x: null },
+        { n: "MarcoRosa98/ral-netto-2026", t: "B", x: 83 },
+        { n: "MikeArdo/Jet-HR-RAL-calculator", t: "B", x: 110 },
+        { n: "PaoCel/chiaro-ral-netto", t: "B", x: 17 },
+        { n: "SaiManas2106/jet-hr-salary-calculator", t: "B", x: 23 },
+        { n: "St3pW4y/JETHR-test-calcolo-ral", t: "B", x: null },
+        { n: "alessiomarcone/jethr-ral-calculator", t: "B", x: 28 },
+        { n: "andreaDevelope/netto-2026", t: "B", x: 47 },
+        { n: "arovattixu/calcolo-netto-ral", t: "B", x: 22 },
+        { n: "chiara-ardessi/JetHR-task_tecnico", t: "B", x: null },
+        { n: "crxtian-hub/JetHR", t: "B", x: 7 },
+        { n: "dsp0205/jet-hr-salary-calculator", t: "B", x: null },
+        { n: "francescocella-dev/jet-hr-ai-builder-task", t: "B", x: 10 },
+        { n: "gabrieleschina00-prog/jethr-ral-calcolatore", t: "B", x: 7 },
+        { n: "giofede97/modulo-calcolo-netto", t: "B", x: 21 },
+        { n: "luciademoja-lab/jethr-calcolatore-netto", t: "B", x: 44 },
+        { n: "matteopasseri407/jethr-ral-calculator", t: "B", x: 12 },
+        { n: "mpassa01/jethr-lordo-netto", t: "B", x: 55 },
+        { n: "odd-git/jet-task", t: "B", x: null },
+        { n: "prab-gupta/jethr-netto-calculator", t: "B", x: 28 },
+        { n: "rdistopia/raffaele_colamarino_JetHRcandidate", t: "B", x: 11 },
+        { n: "roi12/jet-hr-net-salary-calculator", t: "B", x: 72 },
+        { n: "sbasile98/JetHR-Interview-Challenge", t: "B", x: null },
+        { n: "takeyourprofitinfo-png/jet-hr-net-salary-calculator", t: "B", x: 8 },
+        { n: "yahiag04/jethr-ral-calculator", t: "B", x: 33 },
+        { n: "zanardomatteo00/JetHr_Task_Ral2Netto", t: "B", x: 83 },
+
+        { n: "AndreCalzone97/jethr-calcolatore-ral-netto", t: "C", x: null },
+        { n: "DanielNnadi/salary-calculator", t: "C", x: null },
+        { n: "DepontiMichele/calcolatore-ral-netto", t: "C", x: null },
+        { n: "ErikaGenova/product_builder", t: "C", x: null },
+        { n: "FranktheTank1973/calcolatore-ral-jethr", t: "C", x: null },
+        { n: "LucaMimmo05/ral-netto-jethr", t: "C", x: null },
+        { n: "Lukentony/jethr-calcolatore-ral", t: "C", x: null },
+        { n: "N0sh1rt/jet-hr-ral-calculator", t: "C", x: null },
+        { n: "Persheshow/jethr-salary-calculator", t: "C", x: null },
+        { n: "RobertoMatarrese/jethr-ral-netto-calculator", t: "C", x: null },
+        { n: "TatilloWho/-jet-hr-netto", t: "C", x: null },
+        { n: "TheRivolution/jethr-ral-netto", t: "C", x: null },
+        { n: "Yamiro10/ral-netto-jet-hr", t: "C", x: null },
+        { n: "albertobresssan/jetHR", t: "C", x: null },
+        { n: "carnovautomations-dev/jet-hr-salary-calculator", t: "C", x: null },
+        { n: "davidetonelli/calcolatore-stipendio-ral-jethr", t: "C", x: null },
+        { n: "dugoalberto/JetHR", t: "C", x: null },
+        { n: "euxhenjonex/ralcalculator-jetHR", t: "C", x: null },
+        { n: "f65gw6yvpz-maker/jethr-payroll-suite", t: "C", x: null },
+        { n: "holasco-tech/jet-hr-salary-calculator", t: "C", x: null },
+        { n: "kiraxo/jethr-calculator", t: "C", x: null },
+        { n: "linnet99borsari-byte/jethr-net-salary-calculator", t: "C", x: null },
+        { n: "lokeshnandre/jethr-ral-calculator", t: "C", x: null },
+        { n: "lorenzorusso1995-jpg/jethr-calcolatore-netto", t: "C", x: null },
+        { n: "lucaroma94/calcolatore-ral-netto", t: "C", x: null },
+        { n: "marco-scarnato/RAL_ITA_simulator", t: "C", x: null },
+        { n: "marcotravasoni-md/JetHR-AiBuild-MarcoTravasoni", t: "C", x: null },
+        { n: "marcotravasoni-md/jet-hr-prototipo", t: "C", x: null },
+        { n: "martinacoros-code/calcolatore-ral", t: "C", x: null },
+        { n: "messimarco0701/ral-netto-jethr", t: "C", x: null },
+        { n: "micheleboldoni-code/jet-hr-simulatore", t: "C", x: null },
+        { n: "nadillap94/JetHR_ral_calculator", t: "C", x: null },
+        { n: "paquito2432-hue/jet-hr-task", t: "C", x: null },
+        { n: "peppeo16/jethr-salary-calculator", t: "C", x: null },
+        { n: "pieronisi96/JetHR", t: "C", x: null },
+        { n: "samantazagani/ral-netto-calculator-jet-hr", t: "C", x: null },
+        { n: "sandramarrufoc-maker/jet-hr-ral-netto-calculator", t: "C", x: null },
+        { n: "teotasso-wq/calcolatore-netto-jethr", t: "C", x: null },
+        { n: "theiggy-095/jet-calcolatore", t: "C", x: null },
+        { n: "tiestudio/jethr-test-ral", t: "C", x: null },
+
+        { n: "G-alampi/jethr-ral-calcolator", t: "D", x: null }
+      ];
+
+      const descriptions = {
+        A: "Test multipli e fonti istituzionali ampie",
+        B: "Test o tracciabilità sostanziale",
+        C: "MVP con evidenza tecnica più leggera",
+        D: "Incompleto"
+      };
+
+      const tbody = document.querySelector("#projects");
+      const search = document.querySelector("#search");
+      const tier = document.querySelector("#tier");
+      const count = document.querySelector("#result-count");
+
+      function render() {
+        const query = search.value.trim().toLowerCase();
+        const selectedTier = tier.value;
+        const visible = projects
+          .filter((project) => selectedTier === "all" || project.t === selectedTier)
+          .filter((project) => project.n.toLowerCase().includes(query))
+          .sort((a, b) => a.t.localeCompare(b.t) || (b.x || 0) - (a.x || 0) || a.n.localeCompare(b.n));
+
+        tbody.innerHTML = visible.map((project) => {
+          const url = `https://github.com/${project.n}`;
+          const tests = project.x === null ? "—" : project.x;
+          return `<tr>
+            <td><a href="${url}">${project.n}</a></td>
+            <td><span class="badge ${project.t.toLowerCase()}">${project.t}</span></td>
+            <td class="number">${tests}</td>
+            <td>${descriptions[project.t]}</td>
+          </tr>`;
+        }).join("");
+        count.textContent = `${visible.length} di ${projects.length} repository`;
+      }
+
+      search.addEventListener("input", render);
+      tier.addEventListener("change", render);
+      render();
+    </script>
+  </body>
+</html>

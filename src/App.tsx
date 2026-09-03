@@ -36,6 +36,8 @@ import {
   calculateSalaryProjection,
   type SalaryProjection,
 } from './lib/tax'
+import { compareSalaryProjections } from './lib/salaryComparison'
+import { buildSalaryReport, downloadSalaryReport } from './lib/salaryReport'
 
 const TaxMap = lazy(() =>
   import('./components/TaxMap').then((module) => ({ default: module.TaxMap })),
@@ -43,6 +45,10 @@ const TaxMap = lazy(() =>
 
 const EXAMPLE_SALARIES = [25_000, 35_000, 50_000]
 const COMPARISON_CITY_CODES = ['F205', 'H501', 'F839', 'L219', 'A944', 'G273']
+const suggestedComparisonSalary = (salary: number) =>
+  salary >= MAX_GROSS_SALARY
+    ? Math.max(MIN_GROSS_SALARY, salary - 5_000)
+    : Math.min(MAX_GROSS_SALARY, salary + 5_000)
 const DATA_SNAPSHOT_DATE = new Date(TAX_DATA_META.generatedAt)
 const REGIONAL_DATA_DATE = new Date(TAX_DATA_META.regionalSourceUpdatedAt + 'T12:00:00Z')
 const DATA_DATE_IT = new Intl.DateTimeFormat('it-IT').format(DATA_SNAPSHOT_DATE)
@@ -134,6 +140,9 @@ const COPY = {
     nextThousand: 'Prossimi 1.000 € lordi',
     netPerYear: 'netti / anno',
     copyLink: 'Copia link a questo calcolo',
+    downloadPdf: 'Scarica PDF',
+    pdfReady: 'PDF scaricato',
+    pdfError: 'PDF non disponibile',
     linkCopied: 'Link copiato',
     copyLinkFallback: 'Copia l’indirizzo dalla barra del browser',
     publishedRule: 'delibera {year}',
@@ -163,17 +172,15 @@ const COPY = {
       ' pubblicate nel 2026 · ' +
       new Intl.NumberFormat('it-IT').format(TAX_DATA_META.fallbackRules) +
       ' con regola 2025 prorogata per legge',
-    marketValueTitle: 'Quanto vali?',
-    marketValueDescription:
-      'In roadmap: una stima della RAL di mercato per ruolo, esperienza e città. Nessun numero finché non esiste un dataset retributivo verificabile, con la stessa provenienza dichiarata del resto dell’app.',
-    preview: 'Roadmap',
-    role: 'Ruolo',
-    experience: 'Esperienza',
-    city: 'Città',
-    marketSalary: 'RAL di mercato',
-    previewRole: '—',
-    previewExperience: '—',
-    previewCity: '—',
+    salaryCompareTitle: 'Confronta RAL',
+    salaryCompareMeta: 'Stesso profilo',
+    salaryCompareDescription: 'Stesso Comune e mensilità.',
+    salaryCompareLabel: 'Seconda RAL',
+    salaryCompareGross: 'RAL',
+    salaryCompareAnnualNet: 'Netto annuo',
+    salaryComparePerPeriod: 'Per mensilità',
+    salaryCompareRetained: 'della differenza lorda resta netta',
+    salaryCompareInvalid: 'Inserisci una RAL valida.',
     detailTitle: 'Il dettaglio.',
     detailIntro: 'Ogni trattenuta, con regola locale e fonte.',
     reconciliation: 'Riconciliazione annuale',
@@ -308,6 +315,9 @@ const COPY = {
     nextThousand: 'Next €1,000 gross',
     netPerYear: 'net / year',
     copyLink: 'Copy link to this calculation',
+    downloadPdf: 'Download PDF',
+    pdfReady: 'PDF downloaded',
+    pdfError: 'PDF unavailable',
     linkCopied: 'Link copied',
     copyLinkFallback: 'Copy the address from the browser bar',
     publishedRule: '{year} resolution',
@@ -336,17 +346,15 @@ const COPY = {
       ' published in 2026 · ' +
       new Intl.NumberFormat('en-IE').format(TAX_DATA_META.fallbackRules) +
       ' carried over from 2025 by law',
-    marketValueTitle: 'What are you worth?',
-    marketValueDescription:
-      'On the roadmap: a market salary estimate by role, experience and city. No number until a verifiable salary dataset exists, with the same declared provenance as the rest of the app.',
-    preview: 'Roadmap',
-    role: 'Role',
-    experience: 'Experience',
-    city: 'City',
-    marketSalary: 'Market salary',
-    previewRole: '—',
-    previewExperience: '—',
-    previewCity: '—',
+    salaryCompareTitle: 'Compare salaries',
+    salaryCompareMeta: 'Same profile',
+    salaryCompareDescription: 'Same municipality and pay periods.',
+    salaryCompareLabel: 'Second salary',
+    salaryCompareGross: 'Gross salary',
+    salaryCompareAnnualNet: 'Annual net',
+    salaryComparePerPeriod: 'Per pay period',
+    salaryCompareRetained: 'of the gross difference stays net',
+    salaryCompareInvalid: 'Enter a valid salary.',
     detailTitle: 'The breakdown.',
     detailIntro: 'Every deduction, with its local rule and source.',
     reconciliation: 'Annual reconciliation',
@@ -687,6 +695,7 @@ function ResultPanel({
   marginalNet,
   sourceUrl,
   shareUrl,
+  onDownloadPdf,
   formatCurrency,
   formatPercent,
 }: {
@@ -696,6 +705,7 @@ function ResultPanel({
   marginalNet?: number
   sourceUrl: string
   shareUrl: string
+  onDownloadPdf: () => Promise<void>
   formatCurrency: (value: number) => string
   formatPercent: (value: number) => string
 }) {
@@ -713,14 +723,24 @@ function ResultPanel({
   } as CSSProperties
   const sourceStatus = ruleStatusLabel(result.localRuleYear, copy)
   const [copyFeedback, setCopyFeedback] = useState('')
+  const [pdfFeedback, setPdfFeedback] = useState('')
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
 
   // Il messaggio sparisce da solo e non sopravvive a un cambio di lingua.
-  useEffect(() => setCopyFeedback(''), [language])
+  useEffect(() => {
+    setCopyFeedback('')
+    setPdfFeedback('')
+  }, [language])
   useEffect(() => {
     if (!copyFeedback) return
     const timer = window.setTimeout(() => setCopyFeedback(''), 4_000)
     return () => window.clearTimeout(timer)
   }, [copyFeedback])
+  useEffect(() => {
+    if (!pdfFeedback) return
+    const timer = window.setTimeout(() => setPdfFeedback(''), 4_000)
+    return () => window.clearTimeout(timer)
+  }, [pdfFeedback])
 
   function copyShareLink() {
     if (!navigator.clipboard) {
@@ -731,6 +751,19 @@ function ResultPanel({
       .writeText(shareUrl)
       .then(() => setCopyFeedback(copy.linkCopied))
       .catch(() => setCopyFeedback(copy.copyLinkFallback))
+  }
+
+  async function handlePdfDownload() {
+    setIsDownloadingPdf(true)
+    setPdfFeedback('')
+    try {
+      await onDownloadPdf()
+      setPdfFeedback(copy.pdfReady)
+    } catch {
+      setPdfFeedback(copy.pdfError)
+    } finally {
+      setIsDownloadingPdf(false)
+    }
   }
 
   // Il pannello resta una live region atomica, così a ogni calcolo lo screen reader rilegge
@@ -820,8 +853,16 @@ function ResultPanel({
         <button type="button" className="copy-link" onClick={copyShareLink}>
           {copy.copyLink}
         </button>
-        <span className="copy-link-feedback" role="status">
-          {copyFeedback}
+        <button
+          type="button"
+          className="copy-link copy-link--pdf"
+          onClick={handlePdfDownload}
+          disabled={isDownloadingPdf}
+        >
+          {copy.downloadPdf}
+        </button>
+        <span className="copy-link-feedback" role="status" aria-live="polite">
+          {pdfFeedback || copyFeedback}
         </span>
       </div>
 
@@ -850,6 +891,9 @@ function App() {
   )
   const [employerSector, setEmployerSector] = useState<EmployerSector>('commerce')
   const [employerSize, setEmployerSize] = useState<EmployerSize>('upTo5')
+  const [comparisonSalary, setComparisonSalary] = useState(() =>
+    String(suggestedComparisonSalary(DEEP_LINK.salary)),
+  )
 
   const copy = COPY[language]
   const locale = language === 'it' ? 'it-IT' : 'en-IE'
@@ -908,6 +952,23 @@ function App() {
       ),
     [calculatedMunicipality, calculatedPayPeriods, calculatedSalary],
   )
+  const parsedComparisonSalary = Number(comparisonSalary)
+  const comparisonProjection = useMemo(
+    () =>
+      Number.isFinite(parsedComparisonSalary) &&
+      parsedComparisonSalary >= MIN_GROSS_SALARY &&
+      parsedComparisonSalary <= MAX_GROSS_SALARY
+        ? calculateSalaryProjection(
+            parsedComparisonSalary,
+            calculatedPayPeriods,
+            calculatedMunicipality,
+          )
+        : null,
+    [calculatedMunicipality, calculatedPayPeriods, parsedComparisonSalary],
+  )
+  const salaryComparison = comparisonProjection
+    ? compareSalaryProjections(result, comparisonProjection)
+    : null
   const employerItemNote = (entry: { rate: number | null; confidence: string }) =>
     [
       entry.rate === null ? null : contributionRate.format(entry.rate),
@@ -991,6 +1052,7 @@ function App() {
       setCalculatedPayPeriods(link.periods)
       setDraftMunicipalityCode(link.municipalityCode)
       setCalculatedMunicipalityCode(link.municipalityCode ?? DEFAULT_MUNICIPALITY_CODE)
+      setComparisonSalary(String(suggestedComparisonSalary(link.salary)))
       setHasCalculated(link.hasCalculated)
     }
 
@@ -1045,6 +1107,7 @@ function App() {
     setCalculatedSalary(value)
     setCalculatedPayPeriods(draftPayPeriods)
     setCalculatedMunicipalityCode(draftMunicipality.c)
+    setComparisonSalary(String(suggestedComparisonSalary(value)))
     setHasCalculated(true)
     syncUrl(language, {
       salary: value,
@@ -1067,6 +1130,7 @@ function App() {
     setCalculatedSalary(salary)
     setCalculatedPayPeriods(draftPayPeriods)
     setCalculatedMunicipalityCode(municipality.c)
+    setComparisonSalary(String(suggestedComparisonSalary(salary)))
     setHasError(false)
     setHasMunicipalityError(false)
     setHasCalculated(true)
@@ -1096,6 +1160,17 @@ function App() {
     ? copy.exemptionApplied
     : ruleYearLabel(result.localRuleYear, copy, copy.sourceYear)
   const municipalitySourceUrl = getMunicipalitySourceUrl(calculatedMunicipality)
+  async function handleDownloadPdf() {
+    const report = buildSalaryReport({
+      result,
+      comparison: comparisonProjection ?? undefined,
+      language,
+      regionName: getRegionName(result.regionKey, language),
+      sourceUrl: municipalitySourceUrl,
+      generatedAt: DATA_SNAPSHOT_DATE,
+    })
+    await downloadSalaryReport(report)
+  }
   const localSourceMeta = 'MEF · ' + ruleStatusLabel(result.localRuleYear, copy)
   // Costruito dallo stato, non da window.location: resta corretto anche dopo un click su
   // un'ancora interna o il tasto indietro, che cambiano l'URL senza passare da syncUrl.
@@ -1320,6 +1395,7 @@ function App() {
                 }
                 sourceUrl={municipalitySourceUrl}
                 shareUrl={shareUrl}
+                onDownloadPdf={handleDownloadPdf}
                 formatCurrency={currency.format}
                 formatPercent={percent.format}
               />
@@ -1409,30 +1485,65 @@ function App() {
                 </div>
               </article>
 
-              <article className="tool-card tool-card--market">
+              <article className="tool-card tool-card--salary">
                 <div className="tool-card__topline">
-                  <span>{copy.marketValueTitle}</span>
-                  <strong>{copy.preview}</strong>
+                  <span>{copy.salaryCompareTitle}</span>
+                  <strong>{copy.salaryCompareMeta}</strong>
                 </div>
-                <p>{copy.marketValueDescription}</p>
-                <div className="market-preview" aria-label={copy.marketValueTitle}>
-                  <div>
-                    <span>{copy.role}</span>
-                    <strong>{copy.previewRole}</strong>
+                <p>{copy.salaryCompareDescription}</p>
+                <label className="salary-compare-field" htmlFor="comparison-salary">
+                  <span>{copy.salaryCompareLabel}</span>
+                  <span>
+                    <b aria-hidden="true">€</b>
+                    <input
+                      id="comparison-salary"
+                      type="number"
+                      inputMode="decimal"
+                      min={MIN_GROSS_SALARY}
+                      max={MAX_GROSS_SALARY}
+                      step="500"
+                      value={comparisonSalary}
+                      aria-invalid={!comparisonProjection}
+                      onChange={(event) => setComparisonSalary(event.target.value)}
+                    />
+                  </span>
+                </label>
+
+                {comparisonProjection && salaryComparison ? (
+                  <div className="salary-comparison" aria-live="polite">
+                    <div>
+                      <span>{copy.salaryCompareGross}</span>
+                      <strong>
+                        {currency.format(result.grossAnnualSalary)} →{' '}
+                        {currency.format(comparisonProjection.grossAnnualSalary)}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>{copy.salaryCompareAnnualNet}</span>
+                      <strong>
+                        {currency.format(result.annualNet)} →{' '}
+                        {currency.format(comparisonProjection.annualNet)}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>{copy.salaryComparePerPeriod}</span>
+                      <strong>
+                        {salaryComparison.netPerPayPeriodDelta >= 0 ? '+' : '−'}
+                        {currency.format(Math.abs(salaryComparison.netPerPayPeriodDelta))}
+                      </strong>
+                    </div>
+                    {salaryComparison.retainedShare !== null ? (
+                      <div className="salary-comparison__retained">
+                        <strong>{percent.format(salaryComparison.retainedShare)}</strong>
+                        <span>{copy.salaryCompareRetained}</span>
+                      </div>
+                    ) : null}
                   </div>
-                  <div>
-                    <span>{copy.experience}</span>
-                    <strong>{copy.previewExperience}</strong>
-                  </div>
-                  <div>
-                    <span>{copy.city}</span>
-                    <strong>{copy.previewCity}</strong>
-                  </div>
-                </div>
-                <div className="masked-result">
-                  <span>{copy.marketSalary}</span>
-                  <strong>€ ••.•••</strong>
-                </div>
+                ) : (
+                  <p className="salary-compare-error" role="alert">
+                    {copy.salaryCompareInvalid}
+                  </p>
+                )}
               </article>
             </div>
           </div>
