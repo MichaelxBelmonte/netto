@@ -108,7 +108,9 @@ async function answer(request: Extract<AssistantWorkerRequest, { type: 'ask' }>)
   const output = await currentGenerator(
     [{ role: 'system', content: request.systemPrompt }, ...request.messages.slice(-6)],
     {
-      max_new_tokens: request.model === 'gemma-270m' ? 220 : 300,
+      max_new_tokens: request.purpose === 'plan'
+        ? 120
+        : request.model === 'gemma-270m' ? 220 : 300,
       do_sample: false,
       repetition_penalty: 1.12,
     },
@@ -118,6 +120,7 @@ async function answer(request: Extract<AssistantWorkerRequest, { type: 'ask' }>)
     type: 'done',
     requestId: request.requestId,
     model: request.model,
+    purpose: request.purpose,
     text,
     fallbackText: text,
   })
@@ -140,6 +143,7 @@ async function handleRequest(request: AssistantWorkerRequest) {
       type: 'error',
       requestId: request.requestId,
       model: request.model,
+      purpose: request.type === 'ask' ? request.purpose : undefined,
       phase,
       message: errorMessage(error, phase === 'load' ? 'Model loading failed.' : 'Generation failed.'),
       recoverable: true,

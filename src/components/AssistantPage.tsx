@@ -1,16 +1,20 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import brandMark from '../assets/netto-mark-v3-crop.png'
 import {
-  answerGuidedQuestion,
-  answerScenarioChange,
   buildAssistantContext,
   detectAssistantLanguage,
-  detectGuidedQuestion,
   getAssistantSystemPrompt,
   isPlausibleAssistantReply,
   type AssistantSnapshot,
 } from '../lib/assistantContext'
 import { resolveAssistantScenario, updateAssistantScenario } from '../lib/assistantScenario'
+import {
+  buildAssistantAnalysis,
+  buildDeterministicAssistantPlan,
+  getAssistantPlannerPrompt,
+  parseAssistantPlan,
+  type AssistantPlan,
+} from '../lib/assistantAnalysis'
 import type {
   AssistantModelId,
   AssistantWorkerRequest,
@@ -125,6 +129,10 @@ export function AssistantPage({
   const pendingFallbackRef = useRef('')
   const pendingContextRef = useRef('')
   const activeRequestRef = useRef<string | null>(null)
+  const pendingQuestionRef = useRef('')
+  const pendingSnapshotRef = useRef<AssistantSnapshot | null>(null)
+  const pendingPlanRef = useRef<AssistantPlan | null>(null)
+  const pendingMessagesRef = useRef<ChatTurn[]>([])
   const selectedModelRef = useRef<AssistantModelId>(selectedModel)
   const transcriptRef = useRef<HTMLDivElement>(null)
 
@@ -181,6 +189,27 @@ export function AssistantPage({
           return next
         })
       } else if (message.type === 'done') {
+        if (message.purpose === 'plan') {
+          const snapshotForPlan = pendingSnapshotRef.current
+          const questionForPlan = pendingQuestionRef.current
+          if (!snapshotForPlan || !questionForPlan) return
+          const fallbackPlan = pendingPlanRef.current ?? buildDeterministicAssistantPlan(questionForPlan, snapshotForPlan)
+          const plan = parseAssistantPlan(message.text, fallbackPlan)
+          const analysis = buildAssistantAnalysis(questionForPlan, snapshotForPlan, plan)
+          const answerRequestId = createAssistantRequestId()
+          activeRequestRef.current = answerRequestId
+          pendingFallbackRef.current = `${UI[snapshotForPlan.language].modelFallback} ${analysis.fallback}`
+          pendingContextRef.current = `${buildAssistantContext(snapshotForPlan)}\n${analysis.context}\nVERIFIED ENGINE DRAFT — answer the user's exact request intelligently, compare all requested scenarios, and preserve every figure:\n${analysis.fallback}`
+          postWorkerMessage({
+            type: 'ask',
+            requestId: answerRequestId,
+            model: selectedModelRef.current,
+            purpose: 'answer',
+            systemPrompt: getAssistantSystemPrompt(snapshotForPlan.language, pendingContextRef.current),
+            messages: pendingMessagesRef.current,
+          })
+          return
+        }
         setMessages((current) => {
           const next = [...current]
           const generated = message.text.trim()
@@ -284,7 +313,6 @@ export function AssistantPage({
     const question = draft.trim()
     if (!question) return
     const responseLanguage = detectAssistantLanguage(question)
-    const previousSnapshot = { ...activeSnapshot, language: responseLanguage }
     const nextSnapshot = resolveAssistantScenario(question, {
       ...activeSnapshot,
       language: responseLanguage,
@@ -294,40 +322,37 @@ export function AssistantPage({
       { role: 'user', content: question },
     ]
     setActiveSnapshot(nextSnapshot)
-    const guidedQuestion = detectGuidedQuestion(question)
-    const scenarioAnswer = answerScenarioChange(previousSnapshot, nextSnapshot)
-    const verifiedAnswer = guidedQuestion
-      ? answerGuidedQuestion(guidedQuestion, nextSnapshot)
-      : scenarioAnswer
+    const fallbackPlan = buildDeterministicAssistantPlan(question, nextSnapshot)
+    const fallbackAnalysis = buildAssistantAnalysis(question, nextSnapshot, fallbackPlan)
     if (aiState !== 'ready') {
       setMessages([
         ...nextMessages,
         {
           role: 'assistant',
-          content: verifiedAnswer ?? UI[responseLanguage].enableForOpen,
+          content: fallbackAnalysis.fallback,
         },
       ])
       setDraft('')
       return
     }
 
-    const fallbackAnswer = verifiedAnswer ?? answerGuidedQuestion('takeHome', nextSnapshot)
-    const requestId = createAssistantRequestId()
-    activeRequestRef.current = requestId
+    const planRequestId = createAssistantRequestId()
+    activeRequestRef.current = planRequestId
+    pendingQuestionRef.current = question
+    pendingSnapshotRef.current = nextSnapshot
+    pendingPlanRef.current = fallbackPlan
+    pendingMessagesRef.current = nextMessages
+    pendingFallbackRef.current = `${UI[responseLanguage].modelFallback} ${fallbackAnalysis.fallback}`
     setMessages([...nextMessages, { role: 'assistant', content: '' }])
     setDraft('')
     setAiState('thinking')
-    pendingFallbackRef.current = `${UI[responseLanguage].modelFallback} ${fallbackAnswer}`
-    pendingContextRef.current = `${buildAssistantContext(nextSnapshot)}\nVERIFIED ENGINE DRAFT — explain this naturally and preserve every figure:\n${fallbackAnswer}`
     postWorkerMessage({
       type: 'ask',
-      requestId,
+      requestId: planRequestId,
       model: selectedModel,
-      systemPrompt: getAssistantSystemPrompt(
-        responseLanguage,
-        pendingContextRef.current,
-      ),
-      messages: nextMessages,
+      purpose: 'plan',
+      systemPrompt: getAssistantPlannerPrompt(nextSnapshot),
+      messages: [{ role: 'user', content: question }],
     })
   }
 

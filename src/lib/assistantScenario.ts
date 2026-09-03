@@ -32,9 +32,16 @@ const municipalityNames = MUNICIPALITIES.flatMap((municipality) =>
     .map((name) => ({ name, municipality })),
 ).sort((a, b) => b.name.length - a.name.length)
 
-function findMentionedMunicipality(question: string): Municipality | undefined {
+export function findMentionedMunicipalities(question: string): Municipality[] {
   const normalized = ` ${normalize(question)} `
-  return municipalityNames.find(({ name }) => normalized.includes(` ${name} `))?.municipality
+  const matches: Municipality[] = []
+  for (const { name, municipality } of municipalityNames) {
+    if (
+      normalized.includes(` ${name} `) &&
+      !matches.some((item) => item.c === municipality.c)
+    ) matches.push(municipality)
+  }
+  return matches
 }
 
 export function findMentionedSalaries(question: string) {
@@ -100,7 +107,7 @@ export function resolveAssistantScenario(
   question: string,
   current: AssistantSnapshot,
 ): AssistantSnapshot {
-  const municipality = findMentionedMunicipality(question) ?? getMunicipality(current.result.municipalityCode)
+  const municipality = findMentionedMunicipalities(question)[0] ?? getMunicipality(current.result.municipalityCode)
   const salaries = findMentionedSalaries(question)
   const salary = salaries[0] ?? current.result.grossAnnualSalary
   const payPeriods = findMentionedPayPeriods(question) ?? current.result.payPeriods

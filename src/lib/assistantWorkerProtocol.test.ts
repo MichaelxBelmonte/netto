@@ -16,6 +16,7 @@ describe('assistant worker protocol', () => {
       type: 'ask',
       requestId: 'ask-1',
       model: 'qwen3.5-0.8b',
+      purpose: 'answer',
       systemPrompt: 'Be concise.',
       messages: [{ role: 'user', content: 'Hello' }],
     })).toBe(true)
@@ -28,6 +29,7 @@ describe('assistant worker protocol', () => {
       type: 'ask',
       requestId: 'ask-1',
       model: 'unknown',
+      purpose: 'answer',
       systemPrompt: '',
       messages: [],
     })).toBe(false)
@@ -35,6 +37,7 @@ describe('assistant worker protocol', () => {
       type: 'ask',
       requestId: 'ask-1',
       model: 'qwen2.5-0.5b',
+      purpose: 'answer',
       systemPrompt: '',
       messages: [{ role: 'system', content: 'not allowed' }],
     })).toBe(false)

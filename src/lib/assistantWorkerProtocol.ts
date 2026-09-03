@@ -3,6 +3,7 @@ export type ChatTurn = { role: 'user' | 'assistant'; content: string }
 export type AssistantModelId = 'gemma-270m' | 'qwen2.5-0.5b' | 'qwen3.5-0.8b'
 
 export type AssistantRequestId = string
+export type AssistantRequestPurpose = 'plan' | 'answer'
 
 export type AssistantWorkerRequest =
   | { type: 'load'; requestId: AssistantRequestId; model: AssistantModelId }
@@ -10,6 +11,7 @@ export type AssistantWorkerRequest =
       type: 'ask'
       requestId: AssistantRequestId
       model: AssistantModelId
+      purpose: AssistantRequestPurpose
       systemPrompt: string
       messages: ChatTurn[]
     }
@@ -32,6 +34,7 @@ export type AssistantWorkerResponse =
       type: 'done'
       requestId: AssistantRequestId
       model: AssistantModelId
+      purpose: AssistantRequestPurpose
       text: string
       /** Kept during the UI migration; new consumers should use `text`. */
       fallbackText?: string
@@ -40,6 +43,7 @@ export type AssistantWorkerResponse =
       type: 'error'
       requestId: AssistantRequestId
       model?: AssistantModelId
+      purpose?: AssistantRequestPurpose
       phase: 'protocol' | 'load' | 'generate'
       message: string
       recoverable: boolean
@@ -72,6 +76,7 @@ export function isAssistantWorkerRequest(value: unknown): value is AssistantWork
 
   if (request.type === 'load') return true
   return request.type === 'ask' &&
+    (request.purpose === 'plan' || request.purpose === 'answer') &&
     typeof request.systemPrompt === 'string' &&
     Array.isArray(request.messages) &&
     request.messages.every(isChatTurn)
