@@ -109,6 +109,33 @@ export function parseAssistantPlan(
   }
 }
 
+export function isUsefulAssistantInterpretation(text: string, plan: AssistantPlan) {
+  const normalized = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('it-IT')
+  if (text.trim().length < 24) return false
+  if (/riallineament|retta situazione|proposta di profit/i.test(normalized)) return false
+  if (
+    plan.salaries.length > 1 &&
+    !/(?:ral|lord|stipend|salary|gross|netto|take.home)/.test(normalized)
+  ) return false
+  if (
+    plan.includeEmployerCost &&
+    !/(?:azienda|datore|costo|employer|company)/.test(normalized)
+  ) return false
+  if (plan.municipalityCodes.length > 1) {
+    const cityNames = plan.municipalityCodes.map((code) =>
+      getMunicipality(code).n
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('it-IT'),
+    )
+    if (cityNames.filter((name) => normalized.includes(name)).length < 2) return false
+  }
+  return true
+}
+
 export function buildAssistantAnalysis(
   question: string,
   snapshot: AssistantSnapshot,

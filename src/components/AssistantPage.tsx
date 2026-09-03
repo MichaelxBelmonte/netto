@@ -12,6 +12,7 @@ import {
   buildAssistantAnalysis,
   buildDeterministicAssistantPlan,
   getAssistantPlannerPrompt,
+  isUsefulAssistantInterpretation,
   parseAssistantPlan,
   type AssistantPlan,
 } from '../lib/assistantAnalysis'
@@ -189,6 +190,7 @@ export function AssistantPage({
           if (!snapshotForPlan || !questionForPlan) return
           const fallbackPlan = pendingPlanRef.current ?? buildDeterministicAssistantPlan(questionForPlan, snapshotForPlan)
           const plan = parseAssistantPlan(message.text, fallbackPlan)
+          pendingPlanRef.current = plan
           const analysis = buildAssistantAnalysis(questionForPlan, snapshotForPlan, plan)
           const answerRequestId = createAssistantRequestId()
           activeRequestRef.current = answerRequestId
@@ -209,7 +211,9 @@ export function AssistantPage({
           const generated = message.text.trim()
           next[next.length - 1] = {
             role: 'assistant',
-            content: isPlausibleAssistantReply(generated, pendingContextRef.current)
+            content: isPlausibleAssistantReply(generated, pendingContextRef.current) &&
+              pendingPlanRef.current &&
+              isUsefulAssistantInterpretation(generated, pendingPlanRef.current)
               ? `${pendingFallbackRef.current}\n\n${generated}`
               : pendingFallbackRef.current,
           }

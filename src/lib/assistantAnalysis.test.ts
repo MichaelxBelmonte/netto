@@ -3,6 +3,7 @@ import {
   buildAssistantAnalysis,
   buildDeterministicAssistantPlan,
   parseAssistantPlan,
+  isUsefulAssistantInterpretation,
 } from './assistantAnalysis'
 import type { AssistantSnapshot } from './assistantContext'
 import { calculateEmployerCost } from './employerCost'
@@ -72,5 +73,20 @@ describe('assistant multi-scenario analysis', () => {
       fallback,
     )
     expect(plan.salaries).toEqual([35_000, 50_000])
+  })
+
+  it('rejects an irrelevant interpretation from a small local model', () => {
+    const plan = buildDeterministicAssistantPlan(
+      'Confronta 35k e 50k tra Milano e Roma con costo azienda',
+      snapshot,
+    )
+    expect(isUsefulAssistantInterpretation(
+      'Riallineamento può aumentare la propensione al profitto.',
+      plan,
+    )).toBe(false)
+    expect(isUsefulAssistantInterpretation(
+      'Con una RAL più alta cresce il netto, ma aumenta anche il costo azienda; Milano e Roma differiscono per le addizionali locali.',
+      plan,
+    )).toBe(true)
   })
 })
