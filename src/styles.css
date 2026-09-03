@@ -8,6 +8,7 @@
   --paper: #f5f3eb;
   --white: #fffdf8;
   --orange: #ff4f18;
+  --orange-ink: #dc3e0d;
   --muted: #65645f;
   --line: rgba(18, 18, 18, 0.24);
 }
@@ -66,7 +67,7 @@ svg {
 }
 
 :focus-visible {
-  outline: 3px solid var(--orange);
+  outline: 3px solid var(--orange-ink);
   outline-offset: 3px;
 }
 
@@ -194,7 +195,7 @@ svg {
 }
 
 .hero h1 span {
-  color: var(--orange);
+  color: var(--orange-ink);
 }
 
 .hero-intro {
@@ -606,7 +607,7 @@ svg {
 }
 
 .pay-periods input:focus-visible + span {
-  outline: 3px solid var(--orange);
+  outline: 3px solid var(--orange-ink);
   outline-offset: -4px;
 }
 
@@ -1221,11 +1222,9 @@ svg {
   transition: fill 160ms ease, opacity 160ms ease, stroke-width 160ms ease;
 }
 
-.tax-map-shape:hover,
-.tax-map-shape:focus {
+.tax-map-shape:hover {
   fill: var(--orange);
   stroke-width: 2.2;
-  outline: none;
 }
 
 .tax-map-shape.is-active {
@@ -1264,13 +1263,13 @@ svg {
 }
 
 .tax-map-city:hover .tax-map-city__dot,
-.tax-map-city:focus .tax-map-city__dot,
+.tax-map-city:focus-visible .tax-map-city__dot,
 .tax-map-city.is-selected .tax-map-city__dot {
   fill: var(--orange);
   r: 8px;
 }
 
-.tax-map-city:focus .tax-map-city__dot {
+.tax-map-city:focus-visible .tax-map-city__dot {
   stroke: var(--ink);
   stroke-width: 3.5;
 }
@@ -2348,4 +2347,53 @@ svg {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Aggiunte del 2 settembre 2026: suggerimento RAL visibile, spiegazione della regola locale, link condivisibile. */
+.form-hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.source-explainer {
+  margin: 10px 0 0;
+  color: rgba(255, 253, 248, 0.72);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.result-pending {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-left: 4px solid var(--orange);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.copy-link-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.copy-link-feedback {
+  color: rgba(255, 253, 248, 0.72);
+  font-size: 13px;
+}
+
+.copy-link {
+  padding: 9px 14px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.copy-link:hover {
+  color: var(--orange);
 }

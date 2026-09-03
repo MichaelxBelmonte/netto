@@ -35,6 +35,8 @@ export type Municipality = {
   e: number
   b: LocalTaxBracket[]
   s: 0 | 1
+  /** Nomi alternativi per la sola ricerca: forma MEF colloquiale e denominazione in lingua locale. */
+  a?: string[]
 }
 
 export type LocalTaxSegment = {
@@ -257,6 +259,8 @@ function calculateProgressiveLocalTax(
 
   for (const [storedUpperBound, rate] of brackets) {
     const upperBound = storedUpperBound === 0 ? Number.POSITIVE_INFINITY : storedUpperBound
+    // Scaglione degenere (limite non crescente): non deve spostare il limite inferiore.
+    if (Number.isFinite(upperBound) && upperBound <= lowerBound) continue
     const taxableAmount = Math.max(0, Math.min(income, upperBound) - lowerBound)
 
     if (taxableAmount > 0) {
@@ -363,8 +367,17 @@ export function calculateMunicipalTax(
   return { ...result, exemptionApplied: false }
 }
 
+export const DEFAULT_MUNICIPALITY_CODE = 'F205'
+
+/** Ricerca per codice catastale: restituisce undefined se il codice non esiste nel registro. */
+export function findMunicipality(code: string | null | undefined) {
+  if (!code) return undefined
+  return MUNICIPALITY_BY_CODE.get(code.trim().toUpperCase())
+}
+
+/** Come findMunicipality, ma con fallback esplicito al Comune predefinito (Milano). */
 export function getMunicipality(code: string) {
-  return MUNICIPALITY_BY_CODE.get(code) ?? MUNICIPALITY_BY_CODE.get('F205')!
+  return findMunicipality(code) ?? MUNICIPALITY_BY_CODE.get(DEFAULT_MUNICIPALITY_CODE)!
 }
 
 export function getRegionName(regionKey: RegionKey, language: 'it' | 'en' = 'it') {
@@ -394,22 +407,56 @@ export function getMunicipalRateLabel(municipality: Municipality, locale: string
   return rates.map((rate) => formatter.format(rate)).join(' · ')
 }
 
+/**
+ * Scheda MEF del Comune. Il parametro `anno` \u00e8 indispensabile: senza di esso il MEF mostra
+ * l'anno corrente e, per i Comuni senza delibera 2026, la pagina "Non ci sono dati".
+ */
 export function getMunicipalitySourceUrl(municipality: Municipality) {
   return (
     'https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/' +
     'fiscalitalocale/nuova_addcomirpef/risultato.htm?cc=' +
-    encodeURIComponent(municipality.c)
+    encodeURIComponent(municipality.c) +
+    (municipality.y > 0 ? '&anno=' + municipality.y : '')
   )
 }
 
-function normalizeSearch(value: string) {
+/**
+ * Normalizzazione per la ricerca: senza accenti, apostrofi (dritti o tipografici), trattini e spazi.
+ * Cos\u00ec "Sant\u2019Angelo", "Sant Angelo" e "Sant'Angelo" convergono sulla stessa chiave.
+ */
+export function normalizeSearch(value: string) {
   return value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u2019'`\u00b4\u02bc"\u201c\u201d\-\s]+/g, '')
     .toLocaleLowerCase('it-IT')
     .trim()
 }
 
+/**
+ * Chiavi di ricerca di un Comune: la denominazione ufficiale pi\u00f9 gli alias del dataset
+ * (nome MEF colloquiale, forma in lingua locale). "Reggio Emilia" trova "Reggio nell'Emilia",
+ * "Bozen" trova "Bolzano".
+ */
+const SEARCH_INDEX = MUNICIPALITIES.map((municipality) => ({
+  municipality,
+  keys: [municipality.n, ...(municipality.a ?? [])].map(normalizeSearch),
+  tokens: [municipality.n, ...(municipality.a ?? [])]
+    .join(' ')
+    .split(/[\s'\u2019\-]+/)
+    .map(normalizeSearch)
+    .filter(Boolean),
+}))
+
+const POPULAR_RANK = new Map(POPULAR_MUNICIPALITY_CODES.map((code, index) => [code, index]))
+
+/**
+ * Ricerca per rilevanza:
+ * 1. nome esatto, 2. citt\u00e0 principali, 3. prefisso del nome (i nomi pi\u00f9 corti per primi,
+ * cos\u00ec "Bari" precede "Baricella"), 4. tutte le parole della query presenti nel nome
+ * (perch\u00e9 "Cassano Ionio" deve trovare "Cassano allo Ionio"), 5. sigla di provincia per le
+ * query di due lettere, 6. corrispondenza interna al nome.
+ */
 export function searchMunicipalities(query: string, limit = 8) {
   const normalized = normalizeSearch(query)
 
@@ -417,22 +464,43 @@ export function searchMunicipalities(query: string, limit = 8) {
     return POPULAR_MUNICIPALITY_CODES.map(getMunicipality).slice(0, limit)
   }
 
+  const queryTokens = query
+    .split(/[\s'\u2019\-]+/)
+    .map(normalizeSearch)
+    .filter(Boolean)
   const provinceQuery = normalized.length === 2 ? normalized.toLocaleUpperCase('it-IT') : ''
-  const startsWith = []
-  const contains = []
+  const exact: Municipality[] = []
+  const popular: Municipality[] = []
+  const startsWith: Municipality[] = []
+  const allTokens: Municipality[] = []
+  const province: Municipality[] = []
+  const contains: Municipality[] = []
 
-  for (const municipality of MUNICIPALITIES) {
-    const name = normalizeSearch(municipality.n)
-    const provinceMatches = municipality.p === provinceQuery
+  for (const { municipality, keys, tokens } of SEARCH_INDEX) {
+    const isPopular = POPULAR_RANK.has(municipality.c)
 
-    if (name.startsWith(normalized) || provinceMatches) {
-      startsWith.push(municipality)
-    } else if (name.includes(normalized)) {
+    if (keys.some((key) => key === normalized)) {
+      exact.push(municipality)
+    } else if (keys.some((key) => key.startsWith(normalized))) {
+      ;(isPopular ? popular : startsWith).push(municipality)
+    } else if (
+      queryTokens.length > 1 &&
+      queryTokens.every((token) => tokens.some((name) => name.startsWith(token)))
+    ) {
+      ;(isPopular ? popular : allTokens).push(municipality)
+    } else if (provinceQuery && municipality.p === provinceQuery) {
+      ;(isPopular ? popular : province).push(municipality)
+    } else if (keys.some((key) => key.includes(normalized))) {
       contains.push(municipality)
     }
-
-    if (startsWith.length >= limit && !provinceQuery) break
   }
 
-  return [...startsWith, ...contains].slice(0, limit)
+  popular.sort((first, second) => POPULAR_RANK.get(first.c)! - POPULAR_RANK.get(second.c)!)
+  // A parit\u00e0 di prefisso vince il nome pi\u00f9 corto: la query "Bari" cerca Bari, non Baricella.
+  startsWith.sort((first, second) => first.n.length - second.n.length)
+
+  return [...exact, ...popular, ...startsWith, ...allTokens, ...province, ...contains].slice(
+    0,
+    limit,
+  )
 }

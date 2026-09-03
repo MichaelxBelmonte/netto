@@ -1,15 +1,23 @@
 {
   "taxYear": 2026,
-  "generatedAt": "2026-08-17T16:44:33.237Z",
+  "generatedAt": "2026-09-03T11:38:04.055Z",
   "municipalities": 7897,
-  "currentYearRules": 3015,
-  "fallbackRules": 4881,
-  "noSurcharge": 966,
-  "specialCases": 1487,
-  "unresolved": 1,
+  "currentYearRules": 3133,
+  "fallbackRules": 4760,
+  "noSurcharge": 969,
+  "specialCases": 1490,
+  "unresolved": 4,
+  "repairedBrackets": [
+    "A112",
+    "A785"
+  ],
+  "quarantined": [],
+  "namesFromIstat": 7896,
+  "searchAliases": 135,
   "municipalSourcePage": "https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/download/tabella.htm",
   "municipalSource2026": "https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/download/download.php?anno=2026",
   "municipalFallbackSource2025": "https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/nuova_addcomirpef/download/download.php?anno=2025",
+  "istatMunicipalitiesSource": "https://www.istat.it/storage/codici-unita-amministrative/Elenco-comuni-italiani.csv",
   "regionalSourcePage": "https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/addregirpef/download/tabella.htm",
   "regionalSourceUpdatedAt": "2026-06-19"
 }

@@ -3,3 +3,6 @@ dist
 .DS_Store
 coverage
 *.local
+
+# Documento personale di preparazione al colloquio: non va pubblicato nel repository
+interview-jet-hr.html

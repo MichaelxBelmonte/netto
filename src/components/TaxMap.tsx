@@ -47,6 +47,7 @@ type AreaStat = {
 const COPY = {
   it: {
     eyebrow: 'Mappa interattiva',
+    live: 'Segue la RAL',
     title: 'Scegli dalla mappa.',
     description:
       'Il colore mostra la mediana delle addizionali regionali e comunali per la RAL impostata.',
@@ -73,6 +74,7 @@ const COPY = {
   },
   en: {
     eyebrow: 'Interactive map',
+    live: 'Follows the salary',
     title: 'Choose from the map.',
     description:
       'Colour shows the median regional and municipal surtax for the selected gross salary.',
@@ -438,7 +440,7 @@ export function TaxMap({
         <div>
           <div className="tax-map-eyebrow">
             <span>{copy.eyebrow}</span>
-            <strong>Live</strong>
+            <strong>{copy.live}</strong>
           </div>
           <h3>{copy.title}</h3>
           <p>{copy.description}</p>
@@ -450,7 +452,7 @@ export function TaxMap({
 
       <div className="tax-map-workspace">
         <div className="tax-map-visual">
-          <div className="tax-map-status" aria-live="polite">
+          <div className="tax-map-status">
             <span>{previewName}</span>
             <strong>
               {formatCurrency(previewStat?.median ?? analysis.nationalMedian)}
@@ -464,68 +466,56 @@ export function TaxMap({
             role="group"
             aria-label={copy.mapAria}
           >
-            {MAP_FEATURES.map((feature) => {
-              const stat =
-                analysis.provinceStats.get(
-                  getProvinceKey(feature.region, feature.province),
-                ) ?? analysis.regionStats.get(feature.region)
-              const isActive =
-                activeRegion === feature.region &&
-                (!activeProvince || activeProvince === feature.province)
-              const label =
-                feature.provinceName +
-                ', ' +
-                getRegionName(feature.region, language) +
-                ': ' +
-                formatCurrency(stat?.median ?? 0) +
-                ' ' +
-                copy.perYear
+            {/* Le 110 aree sono un arricchimento per mouse e touch: il percorso accessibile da tastiera e screen reader è la ricerca nel pannello. */}
+            <g aria-hidden="true">
+              {MAP_FEATURES.map((feature) => {
+                const stat =
+                  analysis.provinceStats.get(
+                    getProvinceKey(feature.region, feature.province),
+                  ) ?? analysis.regionStats.get(feature.region)
+                const isActive =
+                  activeRegion === feature.region &&
+                  (!activeProvince || activeProvince === feature.province)
+                const label =
+                  feature.provinceName +
+                  ', ' +
+                  getRegionName(feature.region, language) +
+                  ': ' +
+                  formatCurrency(stat?.median ?? 0) +
+                  ' ' +
+                  copy.perYear
 
-              return (
-                <path
-                  d={feature.path}
-                  key={feature.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={label}
-                  className={isActive ? 'tax-map-shape is-active' : 'tax-map-shape'}
-                  style={
-                    {
-                      '--map-fill': getTaxColor(
-                        stat?.median ?? 0,
-                        analysis.minimumMapMedian,
-                        analysis.maximumMapMedian,
-                      ),
-                    } as CSSProperties
-                  }
-                  onMouseEnter={() =>
-                    setHoveredArea({
-                      region: feature.region,
-                      province: feature.province,
-                      provinceName: feature.provinceName,
-                    })
-                  }
-                  onMouseLeave={() => setHoveredArea(null)}
-                  onFocus={() =>
-                    setHoveredArea({
-                      region: feature.region,
-                      province: feature.province,
-                      provinceName: feature.provinceName,
-                    })
-                  }
-                  onBlur={() => setHoveredArea(null)}
-                  onClick={() =>
-                    activateArea(feature.region, feature.province, feature.provinceName)
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
+                return (
+                  <path
+                    d={feature.path}
+                    key={feature.id}
+                    className={isActive ? 'tax-map-shape is-active' : 'tax-map-shape'}
+                    style={
+                      {
+                        '--map-fill': getTaxColor(
+                          stat?.median ?? 0,
+                          analysis.minimumMapMedian,
+                          analysis.maximumMapMedian,
+                        ),
+                      } as CSSProperties
+                    }
+                    onMouseEnter={() =>
+                      setHoveredArea({
+                        region: feature.region,
+                        province: feature.province,
+                        provinceName: feature.provinceName,
+                      })
+                    }
+                    onMouseLeave={() => setHoveredArea(null)}
+                    onClick={() =>
                       activateArea(feature.region, feature.province, feature.provinceName)
                     }
-                  }}
-                />
-              )
-            })}
+                  >
+                    <title>{label}</title>
+                  </path>
+                )
+              })}
+            </g>
 
             {QUICK_CITIES.map((municipality) => {
               const coordinates = DIRECT_CITY_COORDINATES[municipality.c]

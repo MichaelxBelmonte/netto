@@ -11,7 +11,9 @@ import {
 } from 'react'
 import brandMark from './assets/netto-mark-v3-crop.png'
 import {
+  DEFAULT_MUNICIPALITY_CODE,
   TAX_DATA_META,
+  findMunicipality,
   getMunicipality,
   getMunicipalitySourceUrl,
   getMunicipalRateLabel,
@@ -114,23 +116,35 @@ const COPY = {
     monthlyNet: 'Netto medio',
     perPayPeriod: 'per mensilità',
     annualNet: 'Netto annuale',
-    annualTaxes: 'Tasse annuali',
+    annualTaxes: 'IRPEF + addizionali',
     net: 'Netto',
-    taxes: 'Tasse',
+    taxes: 'Imposte',
     contributions: 'INPS',
-    benefits: 'Benefici fiscali',
-    resultNote: 'Media annuale: le singole buste paga possono variare.',
+    benefits: 'Bonus fiscali in busta',
+    resultNote:
+      'Netto annuo diviso per le mensilità. Le buste reali variano: la tredicesima non porta detrazioni, le addizionali si pagano in acconto e saldo, a fine anno c’è il conguaglio.',
     emptyResult: 'Scegli il Comune e calcola.',
     nextThousand: 'Prossimi 1.000 € lordi',
     netPerYear: 'netti / anno',
-    publishedRule: 'pubblicata',
-    fallbackRule: 'fallback',
-    pendingRule: 'dato in aggiornamento',
+    copyLink: 'Copia link a questo calcolo',
+    linkCopied: 'Link copiato',
+    copyLinkFallback: 'Copia l’indirizzo dalla barra del browser',
+    publishedRule: 'delibera {year}',
+    fallbackRule: 'regola {year} prorogata per legge',
+    pendingRule: 'dato non disponibile',
     specialRule: 'caso speciale',
+    publishedExplainer: 'Il Comune ha pubblicato la delibera 2026 sul portale MEF.',
+    fallbackExplainer:
+      'Nessuna delibera 2026 acquisita dal MEF: per legge restano in vigore aliquota e soglia dell’anno precedente (L. 296/2006, art. 1 c. 169). Il Comune può ancora pubblicare entro il 20 dicembre.',
+    pendingExplainer: 'Il registro MEF non contiene ancora una regola utilizzabile per questo Comune.',
+    specialExplainer:
+      'La delibera prevede condizioni particolari, per esempio esenzioni per categorie: il calcolo usa il profilo standard.',
+    pendingMunicipalNote:
+      'Addizionale comunale non disponibile: il netto mostrato non la include.',
     toolsTitle: 'Atlante fiscale.',
     toolsIntro: 'Esplora l’Italia e cambia Comune direttamente dalla mappa.',
     mapLoading: 'Caricamento della mappa fiscale…',
-    live: 'Live',
+    live: 'Interattivo',
     cityCompareTitle: 'Confronta città',
     cityCompareDescription:
       'Netto annuale della stessa RAL nelle principali città. Tocca una riga per applicarla.',
@@ -141,18 +155,18 @@ const COPY = {
       new Intl.NumberFormat('it-IT').format(TAX_DATA_META.currentYearRules) +
       ' pubblicate nel 2026 · ' +
       new Intl.NumberFormat('it-IT').format(TAX_DATA_META.fallbackRules) +
-      ' fallback 2025',
+      ' con regola 2025 prorogata per legge',
     marketValueTitle: 'Quanto vali?',
     marketValueDescription:
-      'Una stima della RAL di mercato basata su ruolo, esperienza e città.',
-    preview: 'Demo · Presto',
+      'In roadmap: una stima della RAL di mercato per ruolo, esperienza e città. Nessun numero finché non esiste un dataset retributivo verificabile, con la stessa provenienza dichiarata del resto dell’app.',
+    preview: 'Roadmap',
     role: 'Ruolo',
     experience: 'Esperienza',
     city: 'Città',
     marketSalary: 'RAL di mercato',
-    previewRole: 'Product builder',
-    previewExperience: '4 anni',
-    previewCity: 'Milano',
+    previewRole: '—',
+    previewExperience: '—',
+    previewCity: '—',
     detailTitle: 'Il dettaglio.',
     detailIntro: 'Ogni trattenuta, con regola locale e fonte.',
     reconciliation: 'Riconciliazione annuale',
@@ -166,7 +180,7 @@ const COPY = {
     municipalTax: 'Addizionale comunale',
     regionalAdjustment: 'Agevolazione regionale',
     exemptionApplied: 'Esenzione comunale applicata',
-    fiscalBenefits: 'Benefici fiscali',
+    fiscalBenefits: 'Bonus fiscali in busta (L. 207/2024 e trattamento integrativo)',
     estimatedAnnualNet: 'Netto annuale stimato',
     totalWithholdings: 'Trattenute annuali',
     openBreakdown: 'Apri il dettaglio',
@@ -184,7 +198,9 @@ const COPY = {
     municipalDatasetMeta:
       'MEF · ' +
       new Intl.NumberFormat('it-IT').format(TAX_DATA_META.municipalities) +
-      ' voci · aggiornamento quotidiano',
+      ' voci · snapshot del ' +
+      DATA_DATE_IT +
+      ' · il MEF aggiorna ogni giorno',
     municipalSourceTitle: 'Addizionale comunale',
     methodTitle: 'Dati e fonti',
     methodIntro:
@@ -234,23 +250,34 @@ const COPY = {
     monthlyNet: 'Average net pay',
     perPayPeriod: 'per pay period',
     annualNet: 'Annual net pay',
-    annualTaxes: 'Annual taxes',
+    annualTaxes: 'Income tax + surtaxes',
     net: 'Net',
     taxes: 'Taxes',
     contributions: 'INPS',
-    benefits: 'Tax benefits',
-    resultNote: 'Annual average: individual payslips may vary.',
+    benefits: 'Payslip tax bonuses',
+    resultNote:
+      'Annual net divided by the pay periods. Real payslips differ: the 13th salary carries no deductions, local surtaxes are paid in instalments, and the year closes with an adjustment.',
     emptyResult: 'Choose your municipality and calculate.',
     nextThousand: 'Next €1,000 gross',
     netPerYear: 'net / year',
-    publishedRule: 'published',
-    fallbackRule: 'fallback',
-    pendingRule: 'data being updated',
+    copyLink: 'Copy link to this calculation',
+    linkCopied: 'Link copied',
+    copyLinkFallback: 'Copy the address from the browser bar',
+    publishedRule: '{year} resolution',
+    fallbackRule: '{year} rule carried over by law',
+    pendingRule: 'data not available',
     specialRule: 'special case',
+    publishedExplainer: 'The municipality published its 2026 resolution on the MEF portal.',
+    fallbackExplainer:
+      'No 2026 resolution recorded by MEF: by law the previous year’s rate and threshold remain in force (Law 296/2006, art. 1 par. 169). The municipality can still publish until 20 December.',
+    pendingExplainer: 'The MEF register has no usable rule for this municipality yet.',
+    specialExplainer:
+      'The resolution sets specific conditions, such as exemptions for certain categories: the calculation uses the standard profile.',
+    pendingMunicipalNote: 'Municipal surtax not available: the net shown does not include it.',
     toolsTitle: 'Tax atlas.',
     toolsIntro: 'Explore Italy and change municipality directly from the map.',
     mapLoading: 'Loading the tax map…',
-    live: 'Live',
+    live: 'Interactive',
     cityCompareTitle: 'Compare cities',
     cityCompareDescription:
       'Annual net pay for the same salary in major cities. Tap a row to apply it.',
@@ -261,18 +288,18 @@ const COPY = {
       new Intl.NumberFormat('en-IE').format(TAX_DATA_META.currentYearRules) +
       ' published in 2026 · ' +
       new Intl.NumberFormat('en-IE').format(TAX_DATA_META.fallbackRules) +
-      ' using 2025 fallback',
+      ' carried over from 2025 by law',
     marketValueTitle: 'What are you worth?',
     marketValueDescription:
-      'A market salary estimate based on your role, experience and city.',
-    preview: 'Preview · Soon',
+      'On the roadmap: a market salary estimate by role, experience and city. No number until a verifiable salary dataset exists, with the same declared provenance as the rest of the app.',
+    preview: 'Roadmap',
     role: 'Role',
     experience: 'Experience',
     city: 'City',
     marketSalary: 'Market salary',
-    previewRole: 'Product builder',
-    previewExperience: '4 years',
-    previewCity: 'Milan',
+    previewRole: '—',
+    previewExperience: '—',
+    previewCity: '—',
     detailTitle: 'The breakdown.',
     detailIntro: 'Every deduction, with its local rule and source.',
     reconciliation: 'Annual reconciliation',
@@ -286,7 +313,7 @@ const COPY = {
     municipalTax: 'Municipal surtax',
     regionalAdjustment: 'Regional relief',
     exemptionApplied: 'Municipal exemption applied',
-    fiscalBenefits: 'Tax benefits',
+    fiscalBenefits: 'Payslip tax bonuses (Law 207/2024 and supplementary treatment)',
     estimatedAnnualNet: 'Estimated annual net',
     totalWithholdings: 'Annual deductions',
     openBreakdown: 'Open breakdown',
@@ -304,7 +331,9 @@ const COPY = {
     municipalDatasetMeta:
       'MEF · ' +
       new Intl.NumberFormat('en-IE').format(TAX_DATA_META.municipalities) +
-      ' records · updated daily',
+      ' records · snapshot ' +
+      DATA_DATE_EN +
+      ' · MEF updates daily',
     municipalSourceTitle: 'Municipal surtax',
     methodTitle: 'Data and sources',
     methodIntro:
@@ -317,6 +346,68 @@ const COPY = {
 
 type Language = keyof typeof COPY
 type Copy = (typeof COPY)[Language]
+
+/** "MEF 2025" per le regole disponibili, "dato non disponibile" per i record senza regola (y = 0). */
+function ruleYearLabel(year: number, copy: Copy, prefix = 'MEF') {
+  return year > 0 ? prefix + ' ' + year : copy.pendingRule
+}
+
+/**
+ * Stato della regola locale: "delibera 2026", "regola 2025 prorogata per legge" o "dato non
+ * disponibile". Il template porta l'anno perché in inglese precede il sostantivo.
+ */
+function ruleStatusLabel(year: number, copy: Copy) {
+  if (year === TAX_YEAR) return copy.publishedRule.replace('{year}', String(TAX_YEAR))
+  if (year > 0) return copy.fallbackRule.replace('{year}', String(year))
+  return copy.pendingRule
+}
+
+function ruleExplainer(year: number, special: boolean, copy: Copy) {
+  const base =
+    year === TAX_YEAR
+      ? copy.publishedExplainer
+      : year > 0
+        ? copy.fallbackExplainer
+        : copy.pendingExplainer
+  // Senza una regola non ha senso parlare delle condizioni della delibera.
+  return special && year > 0 ? base + ' ' + copy.specialExplainer : base
+}
+
+const DEFAULT_SALARY = 35_000
+const DEFAULT_PAY_PERIODS = 13
+
+/**
+ * Deep link ?ral=35000&comune=F205&mensilita=13&lang=it, letto una sola volta all'avvio così
+ * che il primo render mostri già il calcolo richiesto. I parametri non validi vengono ignorati.
+ */
+function readDeepLink() {
+  const empty = {
+    language: 'it' as Language,
+    salary: DEFAULT_SALARY,
+    periods: DEFAULT_PAY_PERIODS as 12 | 13 | 14,
+    municipalityCode: null as string | null,
+    hasCalculated: false,
+  }
+
+  if (typeof window === 'undefined') return empty
+
+  const params = new URLSearchParams(window.location.search)
+  const salary = Number(params.get('ral'))
+  const periods = Number(params.get('mensilita'))
+  const municipality = findMunicipality(params.get('comune'))
+  const hasValidSalary =
+    Number.isInteger(salary) && salary >= MIN_GROSS_SALARY && salary <= MAX_GROSS_SALARY
+
+  return {
+    language: params.get('lang') === 'en' ? ('en' as Language) : empty.language,
+    salary: hasValidSalary ? salary : empty.salary,
+    periods: periods === 12 || periods === 13 || periods === 14 ? periods : empty.periods,
+    municipalityCode: municipality?.c ?? null,
+    hasCalculated: Boolean(municipality && hasValidSalary),
+  }
+}
+
+const DEEP_LINK = readDeepLink()
 
 function ArrowIcon({ diagonal = false }: { diagonal?: boolean }) {
   return (
@@ -447,7 +538,7 @@ function MunicipalityPicker({
                       {municipality.p} · {getRegionName(municipality.g, language)}
                     </small>
                   </span>
-                  <small>MEF {municipality.y || TAX_YEAR}</small>
+                  <small>{ruleYearLabel(municipality.y, copy)}</small>
                 </button>
               ))
             ) : (
@@ -462,7 +553,7 @@ function MunicipalityPicker({
         </p>
       ) : value ? (
         <p className="municipality-meta">
-          {getRegionName(value.g, language)} · {copy.sourceYear} {value.y || TAX_YEAR}
+          {getRegionName(value.g, language)} · {ruleYearLabel(value.y, copy, copy.sourceYear)}
         </p>
       ) : (
         <p className="municipality-meta municipality-meta--prompt">{copy.municipalityPrompt}</p>
@@ -508,6 +599,7 @@ function ResultPanel({
   language,
   marginalNet,
   sourceUrl,
+  shareUrl,
   formatCurrency,
   formatPercent,
 }: {
@@ -516,6 +608,7 @@ function ResultPanel({
   language: Language
   marginalNet?: number
   sourceUrl: string
+  shareUrl: string
   formatCurrency: (value: number) => string
   formatPercent: (value: number) => string
 }) {
@@ -531,13 +624,30 @@ function ResultPanel({
     '--tax-share': String(taxShare) + '%',
     '--contribution-share': String(contributionShare) + '%',
   } as CSSProperties
-  const sourceStatus =
-    result.localRuleYear === TAX_YEAR
-      ? copy.publishedRule + ' ' + TAX_YEAR
-      : result.localRuleYear > 0
-        ? copy.fallbackRule + ' ' + result.localRuleYear
-        : copy.pendingRule
+  const sourceStatus = ruleStatusLabel(result.localRuleYear, copy)
+  const [copyFeedback, setCopyFeedback] = useState('')
 
+  // Il messaggio sparisce da solo e non sopravvive a un cambio di lingua.
+  useEffect(() => setCopyFeedback(''), [language])
+  useEffect(() => {
+    if (!copyFeedback) return
+    const timer = window.setTimeout(() => setCopyFeedback(''), 4_000)
+    return () => window.clearTimeout(timer)
+  }, [copyFeedback])
+
+  function copyShareLink() {
+    if (!navigator.clipboard) {
+      setCopyFeedback(copy.copyLinkFallback)
+      return
+    }
+    navigator.clipboard
+      .writeText(shareUrl)
+      .then(() => setCopyFeedback(copy.linkCopied))
+      .catch(() => setCopyFeedback(copy.copyLinkFallback))
+  }
+
+  // Il pannello resta una live region atomica, così a ogni calcolo lo screen reader rilegge
+  // anche le etichette. Il feedback del bottone vive nella sua region annidata (role="status").
   return (
     <section className="result-panel" aria-live="polite" aria-atomic="true">
       <div className="result-location">
@@ -550,7 +660,9 @@ function ResultPanel({
       <div className="monthly-result">
         <span>{copy.monthlyNet}</span>
         <strong>{formatCurrency(result.netPerPayPeriod)}</strong>
-        <small>{copy.perPayPeriod}</small>
+        <small>
+          {copy.perPayPeriod} · {formatCurrency(result.annualNet)} ÷ {result.payPeriods}
+        </small>
       </div>
 
       <div className="annual-results">
@@ -606,10 +718,25 @@ function ResultPanel({
       <a className="result-source" href={sourceUrl} target="_blank" rel="noreferrer">
         <span>
           MEF · {sourceStatus}
-          {result.localRuleSpecial ? ' · ' + copy.specialRule : ''}
+          {result.localRuleSpecial && result.localRuleYear > 0 ? ' · ' + copy.specialRule : ''}
         </span>
         <ArrowIcon diagonal />
       </a>
+      <p className="source-explainer">
+        {ruleExplainer(result.localRuleYear, result.localRuleSpecial, copy)}
+      </p>
+      {result.localRuleYear === 0 ? (
+        <p className="result-pending">{copy.pendingMunicipalNote}</p>
+      ) : null}
+
+      <div className="copy-link-row">
+        <button type="button" className="copy-link" onClick={copyShareLink}>
+          {copy.copyLink}
+        </button>
+        <span className="copy-link-feedback" role="status">
+          {copyFeedback}
+        </span>
+      </div>
 
       <p className="result-note">{copy.resultNote}</p>
     </section>
@@ -617,16 +744,20 @@ function ResultPanel({
 }
 
 function App() {
-  const [language, setLanguage] = useState<Language>('it')
-  const [draftSalary, setDraftSalary] = useState('35000')
-  const [draftPayPeriods, setDraftPayPeriods] = useState<12 | 13 | 14>(13)
-  const [draftMunicipalityCode, setDraftMunicipalityCode] = useState<string | null>(null)
-  const [calculatedSalary, setCalculatedSalary] = useState(35_000)
-  const [calculatedPayPeriods, setCalculatedPayPeriods] = useState<12 | 13 | 14>(13)
-  const [calculatedMunicipalityCode, setCalculatedMunicipalityCode] = useState('F205')
+  const [language, setLanguage] = useState<Language>(DEEP_LINK.language)
+  const [draftSalary, setDraftSalary] = useState(String(DEEP_LINK.salary))
+  const [draftPayPeriods, setDraftPayPeriods] = useState<12 | 13 | 14>(DEEP_LINK.periods)
+  const [draftMunicipalityCode, setDraftMunicipalityCode] = useState<string | null>(
+    DEEP_LINK.municipalityCode,
+  )
+  const [calculatedSalary, setCalculatedSalary] = useState(DEEP_LINK.salary)
+  const [calculatedPayPeriods, setCalculatedPayPeriods] = useState<12 | 13 | 14>(DEEP_LINK.periods)
+  const [calculatedMunicipalityCode, setCalculatedMunicipalityCode] = useState(
+    DEEP_LINK.municipalityCode ?? DEFAULT_MUNICIPALITY_CODE,
+  )
   const [hasError, setHasError] = useState(false)
   const [hasMunicipalityError, setHasMunicipalityError] = useState(false)
-  const [hasCalculated, setHasCalculated] = useState(false)
+  const [hasCalculated, setHasCalculated] = useState(DEEP_LINK.hasCalculated)
   const [detailsOpen, setDetailsOpen] = useState(() =>
     typeof window === 'undefined' ? true : window.matchMedia('(min-width: 781px)').matches,
   )
@@ -679,15 +810,14 @@ function App() {
       ),
     [calculatedMunicipality, calculatedPayPeriods, calculatedSalary],
   )
+  // Sempre RAL + 1.000: il motore non ha un tetto, il limite di 120.000 vale solo per l'input.
   const marginalResult = useMemo(
     () =>
-      calculatedSalary < MAX_GROSS_SALARY
-        ? calculateSalaryProjection(
-            Math.min(MAX_GROSS_SALARY, calculatedSalary + 1_000),
-            calculatedPayPeriods,
-            calculatedMunicipality,
-          )
-        : undefined,
+      calculateSalaryProjection(
+        calculatedSalary + 1_000,
+        calculatedPayPeriods,
+        calculatedMunicipality,
+      ),
     [calculatedMunicipality, calculatedPayPeriods, calculatedSalary],
   )
   const cityComparisons = useMemo(() => {
@@ -721,7 +851,9 @@ function App() {
   useEffect(() => {
     document.documentElement.lang = language
     document.title =
-      language === 'it' ? 'netto. — Calcolo stipendio netto' : 'netto. — Take-home pay calculator'
+      language === 'it'
+        ? 'netto. — Calcolo stipendio netto ' + TAX_YEAR
+        : 'netto. — Take-home pay calculator ' + TAX_YEAR
   }, [language])
 
   useEffect(() => {
@@ -731,6 +863,52 @@ function App() {
     mediaQuery.addEventListener('change', syncDetailState)
     return () => mediaQuery.removeEventListener('change', syncDetailState)
   }, [])
+
+  // Tasto indietro: l'URL torna a una query precedente, quindi lo stato va riallineato a quella.
+  useEffect(() => {
+    function restoreFromUrl() {
+      const link = readDeepLink()
+      setLanguage(link.language)
+      setDraftSalary(String(link.salary))
+      setCalculatedSalary(link.salary)
+      setDraftPayPeriods(link.periods)
+      setCalculatedPayPeriods(link.periods)
+      setDraftMunicipalityCode(link.municipalityCode)
+      setCalculatedMunicipalityCode(link.municipalityCode ?? DEFAULT_MUNICIPALITY_CODE)
+      setHasCalculated(link.hasCalculated)
+    }
+
+    window.addEventListener('popstate', restoreFromUrl)
+    return () => window.removeEventListener('popstate', restoreFromUrl)
+  }, [])
+
+  /** Query string che rappresenta il calcolo corrente: usata sia per l'URL sia per "Copia link". */
+  function buildShareQuery(
+    lang: Language,
+    calculation?: { salary: number; municipalityCode: string; periods: number },
+  ) {
+    const params = new URLSearchParams()
+    if (calculation) {
+      params.set('ral', String(calculation.salary))
+      params.set('comune', calculation.municipalityCode)
+      params.set('mensilita', String(calculation.periods))
+    }
+    if (lang !== 'it') params.set('lang', lang)
+    const query = params.toString()
+    return query ? '?' + query : ''
+  }
+
+  /** Riscrive la query string senza toccare la history (niente voci nuove con il tasto indietro). */
+  function syncUrl(
+    lang: Language,
+    calculation?: { salary: number; municipalityCode: string; periods: number },
+  ) {
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + buildShareQuery(lang, calculation) + window.location.hash,
+    )
+  }
 
   function calculate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -752,6 +930,11 @@ function App() {
     setCalculatedPayPeriods(draftPayPeriods)
     setCalculatedMunicipalityCode(draftMunicipality.c)
     setHasCalculated(true)
+    syncUrl(language, {
+      salary: value,
+      municipalityCode: draftMunicipality.c,
+      periods: draftPayPeriods,
+    })
   }
 
   function applyInteractiveMunicipality(municipality: Municipality) {
@@ -771,6 +954,7 @@ function App() {
     setHasError(false)
     setHasMunicipalityError(false)
     setHasCalculated(true)
+    syncUrl(language, { salary, municipalityCode: municipality.c, periods: draftPayPeriods })
   }
 
   const errorMessage =
@@ -794,14 +978,26 @@ function App() {
       : undefined
   const municipalNote = result.municipalExemptionApplied
     ? copy.exemptionApplied
-    : copy.sourceYear + ' ' + (result.localRuleYear || TAX_YEAR)
+    : ruleYearLabel(result.localRuleYear, copy, copy.sourceYear)
   const municipalitySourceUrl = getMunicipalitySourceUrl(calculatedMunicipality)
-  const localSourceMeta =
-    result.localRuleYear === TAX_YEAR
-      ? 'MEF · ' + copy.publishedRule + ' ' + TAX_YEAR
-      : result.localRuleYear > 0
-        ? 'MEF · ' + copy.fallbackRule + ' ' + result.localRuleYear
-        : 'MEF · ' + copy.pendingRule
+  const localSourceMeta = 'MEF · ' + ruleStatusLabel(result.localRuleYear, copy)
+  // Costruito dallo stato, non da window.location: resta corretto anche dopo un click su
+  // un'ancora interna o il tasto indietro, che cambiano l'URL senza passare da syncUrl.
+  const shareUrl =
+    typeof window === 'undefined'
+      ? ''
+      : window.location.origin +
+        window.location.pathname +
+        buildShareQuery(
+          language,
+          hasCalculated
+            ? {
+                salary: calculatedSalary,
+                municipalityCode: calculatedMunicipalityCode,
+                periods: calculatedPayPeriods,
+              }
+            : undefined,
+        )
   const sources = [
     ...SOURCE_LINKS.map((source) => ({
       title: source.title[language],
@@ -840,7 +1036,7 @@ function App() {
         <div className="header-actions">
           <nav aria-label={copy.navigation}>
             <a href="#strumenti">{copy.toolsNav}</a>
-            <a href="#dettaglio">{copy.detailNav}</a>
+            {hasCalculated ? <a href="#dettaglio">{copy.detailNav}</a> : null}
             <a href="#fonti">{copy.sourcesNav}</a>
           </nav>
           <div className="language-switch" aria-label={copy.language}>
@@ -849,7 +1045,19 @@ function App() {
                 type="button"
                 key={item}
                 aria-pressed={language === item}
-                onClick={() => setLanguage(item)}
+                onClick={() => {
+                  setLanguage(item)
+                  syncUrl(
+                    item,
+                    hasCalculated
+                      ? {
+                          salary: calculatedSalary,
+                          municipalityCode: calculatedMunicipalityCode,
+                          periods: calculatedPayPeriods,
+                        }
+                      : undefined,
+                  )
+                }}
               >
                 {item.toUpperCase()}
               </button>
@@ -919,11 +1127,14 @@ function App() {
                   }}
                   style={{ '--range-progress': String(rangeProgress) + '%' } as CSSProperties}
                 />
-                <div className="range-labels" id="salary-help" aria-label={copy.salaryHelp}>
+                <div className="range-labels" aria-hidden="true">
                   <span>{compactNumber.format(MIN_GROSS_SALARY)}</span>
                   <span>{compactNumber.format(MAX_GROSS_SALARY)}</span>
                 </div>
               </div>
+              <p className="form-hint" id="salary-help">
+                {copy.salaryHelp}
+              </p>
 
               <div className="quick-values" aria-label={copy.examples}>
                 <span>{copy.examples}</span>
@@ -992,6 +1203,7 @@ function App() {
                   marginalResult ? marginalResult.annualNet - result.annualNet : undefined
                 }
                 sourceUrl={municipalitySourceUrl}
+                shareUrl={shareUrl}
                 formatCurrency={currency.format}
                 formatPercent={percent.format}
               />
@@ -1054,7 +1266,7 @@ function App() {
                         <span>
                           <strong>{municipality.n}</strong>
                           <small>
-                            {municipality.p} · MEF {municipality.y || TAX_YEAR}
+                            {municipality.p} · {ruleYearLabel(municipality.y, copy)}
                           </small>
                         </span>
                         <span>

@@ -42,6 +42,7 @@ export const IRPEF_BRACKETS: readonly ProgressiveBracket[] = [
 ]
 
 const money = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
+const ratio = (value: number) => Math.round(value * 10_000) / 10_000
 
 export function calculateProgressiveTax(
   taxableIncome: number,
@@ -57,14 +58,15 @@ export function calculateProgressiveTax(
     const taxableAmount = Math.max(0, Math.min(income, upperBound) - lowerBound)
 
     if (taxableAmount > 0) {
-      const tax = taxableAmount * bracket.rate
+      // Round each segment before summing so that the displayed segments always add up to the total.
+      const tax = money(taxableAmount * bracket.rate)
       total += tax
       segments.push({
         from: lowerBound,
         to: Number.isFinite(upperBound) ? upperBound : income,
         rate: bracket.rate,
         taxableAmount: money(taxableAmount),
-        tax: money(tax),
+        tax,
       })
     }
 
@@ -90,7 +92,11 @@ export function calculateEmployeeContributions(grossAnnualSalary: number) {
   }
 }
 
-export function calculateEmploymentDeduction(taxableIncome: number, grossIrpef: number) {
+/**
+ * Detrazione per lavoro dipendente teoricamente spettante (art. 13 c. 1 e 1.1 TUIR),
+ * prima del limite dell'imposta lorda. Serve anche al test di capienza del trattamento integrativo.
+ */
+export function calculateTheoreticalEmploymentDeduction(taxableIncome: number) {
   let deduction = 0
 
   if (taxableIncome <= 15_000) {
@@ -105,7 +111,11 @@ export function calculateEmploymentDeduction(taxableIncome: number, grossIrpef: 
     deduction += 65
   }
 
-  return money(Math.min(Math.max(0, deduction), grossIrpef))
+  return money(Math.max(0, deduction))
+}
+
+export function calculateEmploymentDeduction(taxableIncome: number, grossIrpef: number) {
+  return money(Math.min(calculateTheoreticalEmploymentDeduction(taxableIncome), grossIrpef))
 }
 
 export function calculateAdditionalEmploymentDeduction(
@@ -130,12 +140,14 @@ export function calculateTaxFreeEmploymentSum(taxableIncome: number) {
   return money(taxableIncome * rate)
 }
 
-export function calculateSupplementaryTreatment(
-  taxableIncome: number,
-  grossIrpef: number,
-  employmentDeduction: number,
-) {
-  const qualifyingTax = Math.max(0, employmentDeduction - 75)
+/**
+ * Trattamento integrativo (D.L. 3/2020 art. 1): spetta se il reddito non supera 15.000 €
+ * e l'imposta lorda supera la detrazione art. 13 teoricamente spettante diminuita di 75 €.
+ * La detrazione teorica viene ricalcolata qui dall'imponibile: passare quella già limitata
+ * all'imposta lorda renderebbe la condizione sempre vera per gli incapienti.
+ */
+export function calculateSupplementaryTreatment(taxableIncome: number, grossIrpef: number) {
+  const qualifyingTax = Math.max(0, calculateTheoreticalEmploymentDeduction(taxableIncome) - 75)
   return taxableIncome <= 15_000 && grossIrpef > qualifyingTax ? 1_200 : 0
 }
 
@@ -206,11 +218,7 @@ export function calculateSalaryProjection(
     : { total: 0, segments: [], adjustment: 0, exemptionApplied: false }
 
   const taxFreeEmploymentSum = calculateTaxFreeEmploymentSum(taxableIncome)
-  const supplementaryTreatment = calculateSupplementaryTreatment(
-    taxableIncome,
-    irpef.total,
-    employmentDeduction,
-  )
+  const supplementaryTreatment = calculateSupplementaryTreatment(taxableIncome, irpef.total)
   const totalBenefits = money(taxFreeEmploymentSum + supplementaryTreatment)
   const totalTaxes = money(netIrpef + regional.total + municipal.total)
   const totalDeductions = money(contributions.total + totalTaxes)
@@ -248,7 +256,7 @@ export function calculateSalaryProjection(
     annualNet,
     netPerPayPeriod: money(annualNet / payPeriods),
     grossPerPayPeriod: money(grossAnnualSalary / payPeriods),
-    takeHomeRate: annualNet / grossAnnualSalary,
-    taxRate: totalTaxes / grossAnnualSalary,
+    takeHomeRate: ratio(annualNet / grossAnnualSalary),
+    taxRate: ratio(totalTaxes / grossAnnualSalary),
   }
 }
