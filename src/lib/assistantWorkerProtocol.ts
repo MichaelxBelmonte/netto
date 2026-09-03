@@ -1,12 +1,14 @@
 export type ChatTurn = { role: 'user' | 'assistant'; content: string }
 
+export type AssistantModelId = 'gemma-270m' | 'qwen2.5-0.5b' | 'qwen3.5-0.8b'
+
 export type AssistantWorkerRequest =
-  | { type: 'load' }
-  | { type: 'ask'; systemPrompt: string; messages: ChatTurn[] }
+  | { type: 'load'; model: AssistantModelId }
+  | { type: 'ask'; model: AssistantModelId; systemPrompt: string; messages: ChatTurn[] }
 
 export type AssistantWorkerResponse =
-  | { type: 'loading'; progress?: number }
-  | { type: 'ready' }
+  | { type: 'loading'; model: AssistantModelId; progress?: number }
+  | { type: 'ready'; model: AssistantModelId }
   | { type: 'token'; token: string }
   | { type: 'done'; fallbackText?: string }
-  | { type: 'error'; message: string }
+  | { type: 'error'; model?: AssistantModelId; message: string }

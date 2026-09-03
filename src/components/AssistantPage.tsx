@@ -11,12 +11,22 @@ import {
   type AssistantSnapshot,
 } from '../lib/assistantContext'
 import { resolveAssistantScenario, updateAssistantScenario } from '../lib/assistantScenario'
-import type { AssistantWorkerResponse, ChatTurn } from '../lib/assistantWorkerProtocol'
+import type {
+  AssistantModelId,
+  AssistantWorkerResponse,
+  ChatTurn,
+} from '../lib/assistantWorkerProtocol'
 import { searchMunicipalities } from '../lib/localTaxes'
 import { MAX_GROSS_SALARY, MIN_GROSS_SALARY } from '../lib/tax'
 import { downloadAssistantReport } from '../lib/assistantReport'
 
 type AiState = 'idle' | 'loading' | 'ready' | 'thinking' | 'error' | 'unsupported'
+
+const ASSISTANT_MODELS: Array<{ id: AssistantModelId; label: string; size: string }> = [
+  { id: 'gemma-270m', label: 'Gemma 3 270M', size: '~273 MB' },
+  { id: 'qwen2.5-0.5b', label: 'Qwen 2.5 0.5B', size: '~483 MB' },
+  { id: 'qwen3.5-0.8b', label: 'Qwen 3.5 0.8B', size: '~583 MB' },
+]
 
 const UI = {
   it: {
@@ -29,9 +39,9 @@ const UI = {
     loading: 'Download del modello', ready: 'AI locale pronta', thinking: 'Sto leggendo il calcolo…',
     unsupported: 'WebGPU non è disponibile in questo browser. Le domande rapide continuano a funzionare.',
     failed: 'Non riesco ad avviare il modello locale. Puoi usare le domande rapide.',
-    modelToggle: 'Gemma locale', modelOff: 'Gemma spenta',
-    modelFallback: 'Gemma non ha prodotto una risposta affidabile. Ti mostro i dati verificati:',
-    enableForOpen: 'Per questa domanda serve Gemma: puoi accenderla con il toggle in alto.',
+    modelToggle: 'AI locale', modelOff: 'AI spenta', modelChoice: 'Modello locale',
+    modelFallback: 'Il modello non ha prodotto una risposta affidabile. Ti mostro i dati verificati:',
+    enableForOpen: 'Per questa domanda serve il modello locale: puoi attivarlo con il toggle.',
     quick: 'Domande rapide', input: 'Fai una domanda sui dati del calcolo', send: 'Invia',
     exportPdf: 'Crea PDF personalizzato', pdfReady: 'PDF creato', pdfError: 'PDF non disponibile',
     authoritative: 'I numeri vengono dal motore fiscale; Gemma li spiega e può sbagliare il testo.',
@@ -51,9 +61,9 @@ const UI = {
     loading: 'Downloading model', ready: 'Local AI ready', thinking: 'Reading the calculation…',
     unsupported: 'WebGPU is unavailable in this browser. Quick questions still work.',
     failed: 'The local model could not start. You can still use quick questions.',
-    modelToggle: 'Local Gemma', modelOff: 'Gemma off',
-    modelFallback: 'Gemma did not produce a reliable answer. Here are the verified figures:',
-    enableForOpen: 'This question needs Gemma. You can turn it on with the toggle above.',
+    modelToggle: 'Local AI', modelOff: 'AI off', modelChoice: 'Local model',
+    modelFallback: 'The model did not produce a reliable answer. Here are the verified figures:',
+    enableForOpen: 'This question needs the local model. Turn it on with the toggle.',
     quick: 'Quick questions', input: 'Ask about this calculation', send: 'Send',
     exportPdf: 'Create custom PDF', pdfReady: 'PDF created', pdfError: 'PDF unavailable',
     authoritative: 'Figures come from the tax engine; Gemma explains them and may get the wording wrong.',
@@ -84,6 +94,7 @@ export function AssistantPage({
     typeof navigator !== 'undefined' && 'gpu' in navigator ? 'idle' : 'unsupported',
   )
   const [progress, setProgress] = useState(0)
+  const [selectedModel, setSelectedModel] = useState<AssistantModelId>('gemma-270m')
   const [pdfFeedback, setPdfFeedback] = useState('')
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
   const workerRef = useRef<Worker | null>(null)
@@ -160,7 +171,7 @@ export function AssistantPage({
   function activateAi() {
     if (aiState === 'unsupported') return
     setAiState('loading')
-    ensureWorker().postMessage({ type: 'load' })
+    ensureWorker().postMessage({ type: 'load', model: selectedModel })
   }
 
   function toggleAi() {
@@ -174,6 +185,16 @@ export function AssistantPage({
     setMessages((current) => current.filter((message) => message.content !== ''))
     setProgress(0)
     setAiState('idle')
+  }
+
+  function changeModel(model: AssistantModelId) {
+    if (model === selectedModel || aiState === 'loading' || aiState === 'thinking') return
+    workerRef.current?.terminate()
+    workerRef.current = null
+    setSelectedModel(model)
+    setProgress(0)
+    setMessages((current) => current.filter((message) => message.content !== ''))
+    setAiState(typeof navigator !== 'undefined' && 'gpu' in navigator ? 'idle' : 'unsupported')
   }
 
   function commitSalary() {
@@ -252,6 +273,7 @@ export function AssistantPage({
     pendingContextRef.current = buildAssistantContext(nextSnapshot)
     ensureWorker().postMessage({
       type: 'ask',
+      model: selectedModel,
       systemPrompt: getAssistantSystemPrompt(
         responseLanguage,
         pendingContextRef.current,
@@ -312,6 +334,20 @@ export function AssistantPage({
             </button>
             <button type="submit" disabled={!draft.trim()} aria-label={copy.send}>↑</button>
           </form>
+          <label className="assistant-model-select">
+            <span>{copy.modelChoice}</span>
+            <select
+              value={selectedModel}
+              disabled={aiState === 'loading' || aiState === 'thinking'}
+              onChange={(event) => changeModel(event.target.value as AssistantModelId)}
+            >
+              {ASSISTANT_MODELS.map((model) => (
+                <option value={model.id} key={model.id}>
+                  {model.label} · {model.size}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="assistant-model-status" aria-live="polite">
             {aiState === 'loading' ? (
               <><span>{copy.loading} · {Math.round(progress * 100)}%</span><i><b style={{ width: `${Math.round(progress * 100)}%` }} /></i></>
