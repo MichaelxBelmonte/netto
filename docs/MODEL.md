@@ -122,6 +122,54 @@ La somma delle tredici buste ricostruite a norma coincide con il netto annuo del
 
 L’indicatore «prossimi 1.000 € lordi» ricalcola l’intero modello a `RAL + 1.000` e mostra la differenza di netto annuale. Non è una semplice aliquota marginale teorica: include la perdita o l’acquisizione delle detrazioni attraversate (a 35.000 € restano 420 €).
 
+## 10. Costo azienda
+
+`src/lib/employerCost.ts` è un modulo separato che **non importa `tax.ts`**: i due calcoli condividono la RAL, non la logica. Il netto poggia su norme fiscali pubblicate; il costo azienda su tabelle contributive che l'INPS non pubblica più in forma analitica aggiornata. Ogni voce del risultato porta quindi la propria fonte e il proprio livello di confidenza:
+
+- `verified`: aliquota fissata da una norma citabile e in vigore
+- `reconstructed`: aliquota presa dall'ultima tabella INPS analitica reperibile (gennaio 2012) e aggiornata a mano con le riforme successive
+
+```text
+costo azienda = RAL
+              + contributi INPS a carico azienda
+              + premio INAIL
+              + TFR accantonato
+              + fondi contrattuali
+```
+
+Aliquote a carico dell'azienda, sulla RAL:
+
+| Voce | Commercio | Industria | Base |
+| --- | ---: | ---: | --- |
+| Pensione (IVS) | 23,81% | 23,81% | tabella INPS, entro il massimale di 122.295 € |
+| Disoccupazione (NASpI) | 1,31% | 1,31% | L. 92/2012 art. 2 c. 25 |
+| Formazione professionale | 0,30% | 0,30% | L. 845/1978 art. 25 |
+| Fondo di garanzia del TFR | 0,20% | 0,20% | L. 297/1982 art. 2 |
+| Assegni al nucleo familiare | 0,68% | 0,68% | tabella INPS |
+| Indennità di malattia | 2,44% | — | tabella INPS; nell'industria l'impiegato non la versa perché la malattia la paga direttamente l'azienda |
+| Maternità | 0,24% | 0,46% | tabella INPS |
+| Cassa integrazione ordinaria | — | 1,70% | D.Lgs. 148/2015 art. 13, fino a 50 dipendenti |
+| Fondo di integrazione salariale | 0,333% o 0,533% | — | D.Lgs. 148/2015 art. 29 c. 8: 0,50% fino a 5 dipendenti, 0,80% oltre, due terzi al datore |
+| Cassa integrazione straordinaria | 0,60% oltre 15 dipendenti | 0,60% oltre 15 dipendenti | D.Lgs. 148/2015 art. 23: 0,90%, due terzi al datore |
+| Premio INAIL | 0,40% | 0,50% | voce di tariffa 0722, lavoro d'ufficio: tasso medio prima dell'oscillazione |
+| TFR accantonato | 6,907% | 6,907% | art. 2120 c.c. (1/13,5) meno lo 0,50% dell'art. 3 L. 297/1982, già compreso nell'IVS |
+
+Il TFR è la trappola aritmetica del calcolo: l'accantonamento lordo è 7,41%, ma lo 0,50% è già dentro l'aliquota IVS a carico dell'azienda. Sommare 7,41% e l'aliquota INPS piena conterebbe due volte lo stesso mezzo punto.
+
+Su RAL 35.000 €, impiegato del commercio in un'azienda da 6 a 15 dipendenti: contributi INPS 10.329,67 € (29,51%), INAIL 140 €, TFR 2.417,59 €, fondi contrattuali 191 €, **costo totale 48.078,26 €**, pari a 1,3737 volte la RAL.
+
+### La metrica esposta in interfaccia
+
+Il moltiplicatore costo/RAL è quasi una costante sotto il massimale: comunicarlo aggiunge poco. `summariseEmploymentCost()` unisce i due motori senza accoppiarli e calcola la quota che arriva davvero al dipendente, che invece cambia molto: 56,8% a RAL 30.000, 54,2% a 35.000, 45,6% a 60.000.
+
+### Coerenza dichiarata tra i due motori
+
+Il 9,19% usato per il netto è la quota del lavoratore in un'azienda senza contribuzione a fondi di integrazione salariale. Scegliendo uno scenario diverso, la quota implicita sale: 9,36% con il FIS ridotto, 9,46% con il FIS pieno, 9,49% e oltre dove c'è anche la CIGS. Il risultato espone `impliedEmployeeRate` e `matchesEngineEmployeeRate`, e l'interfaccia mostra un avviso invece di nascondere la differenza.
+
+### Cosa resta fuori
+
+Previdenza complementare, premi, welfare, quattordicesima, contributo addizionale NASpI sui contratti a termine, ticket di licenziamento, oscillazione del tasso INAIL per andamento infortunistico, apprendistato e qualifica dirigenziale, che dipende da fondi contrattuali non riconducibili a una percentuale. Gli esoneri contributivi non sono modellati: agiscono su una sola delle quattro voci, la quota INPS a carico azienda, con un tetto mensile riparametrato, e non toccano mai INAIL, TFR né la quota del lavoratore.
+
 ## Verifica automatica
 
 I test coprono:
@@ -133,6 +181,7 @@ I test coprono:
 - eccezioni di Friuli, Valle d’Aosta, Trento, Lazio, Umbria e Bolzano, con i relativi salti di soglia
 - link alla scheda MEF sull’anno della regola, ricerca con apostrofi e omonimi
 - invarianti del registro comunale (`src/lib/dataset.test.ts`)
+- costo azienda: scomposizione voce per voce nei due settori, somma sempre uguale al totale, massimale IVS, aliquota implicita del lavoratore e quota di netto sul costo (`src/lib/employerCost.test.ts`)
 
 ## Limiti noti
 
@@ -140,7 +189,7 @@ I test coprono:
 - nessun ragguaglio ai giorni di lavoro: detrazioni e somma non imponibile sono calcolate su anno intero (per un assunto a metà anno il netto è sovrastimato)
 - nessuna gestione di familiari, oneri, altri redditi o bonus individuali
 - nessuna distinzione per CCNL, qualifica, fondo o dimensione aziendale (9,19% come proxy del 9,49% CIGS)
-- esclusi TFR, premi, welfare, fringe benefit e contribuzione datoriale
+- premi, welfare e fringe benefit restano fuori da entrambi i motori; il costo azienda vive in un modulo separato, con i limiti dichiarati al paragrafo 10
 - non modellate le imposte sostitutive 2026 della L. 199/2025 (5% sugli incrementi da rinnovo CCNL per redditi ≤ 33.000 €, 15% su notturni, festivi e turni fino a 1.500 €, 1% sui premi di risultato fino a 5.000 €) né l’esonero IVS per le madri di tre o più figli (L. 213/2023, fino al 31 dicembre 2026)
 - i casi comunali specifici sono una stima per il profilo standard, non una codifica integrale della delibera
 - quattro voci non hanno una regola utilizzabile (Castegnero Nanto, di recente istituzione, e tre Comuni la cui delibera 2025 è dichiarata inapplicabile dal MEF): il netto è calcolato senza addizionale comunale e l'interfaccia lo dichiara

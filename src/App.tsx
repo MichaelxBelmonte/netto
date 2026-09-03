@@ -23,6 +23,13 @@ import {
   type Municipality,
 } from './lib/localTaxes'
 import {
+  calculateEmployerCost,
+  summariseEmploymentCost,
+  type EmployerCostItemKey,
+  type EmployerSector,
+  type EmployerSize,
+} from './lib/employerCost'
+import {
   MAX_GROSS_SALARY,
   MIN_GROSS_SALARY,
   TAX_YEAR,
@@ -192,6 +199,46 @@ const COPY = {
     incomeTaxRates: '23 · 33 · 43%',
     standardScope:
       'Caso standard: dipendente privato a tempo indeterminato, senza familiari a carico o altri redditi. Esclusi TFR, welfare, premi e fringe benefit.',
+    employerTitle: 'Dal costo azienda al netto.',
+    employerIntro:
+      'La stessa RAL vista dall’altro lato: quanto spende l’azienda e quanta parte arriva davvero in busta.',
+    employerSector: 'Settore',
+    employerSectorCommerce: 'Commercio e terziario',
+    employerSectorIndustry: 'Industria',
+    employerSize: 'Dimensione',
+    employerSizeUpTo5: 'Fino a 5 dipendenti',
+    employerSizeFrom6to15: 'Da 6 a 15 dipendenti',
+    employerSizeOver15: 'Oltre 15 dipendenti',
+    employerTotal: 'Costo azienda',
+    employerMultiplier: 'volte la RAL',
+    employerNetShare: 'Arriva netto al dipendente',
+    employerCostPerNet: 'di costo per ogni euro netto',
+    employerGrossRow: 'Retribuzione lorda',
+    employerInpsTotal: 'Contributi INPS a carico azienda',
+    employerReconstructed: 'ricostruita',
+    employerBarNet: 'Netto in busta',
+    employerBarEmployee: 'Imposte e contributi del dipendente',
+    employerBarEmployer: 'Oneri a carico azienda',
+    employerConfidenceNote:
+      'Le voci marcate «ricostruita» vengono dall’ultima tabella INPS analitica reperibile, aggiornata a mano con le riforme successive: sono una stima dichiarata, non una trascrizione. Fuori restano previdenza complementare, premi, welfare e le variazioni di tariffa INAIL per mansione.',
+    employerRateMismatch:
+      'In questo scenario il lavoratore versa anche la sua quota del fondo di integrazione salariale: {rate} invece del 9,19% usato per il netto qui sopra, che risulta quindi leggermente ottimista.',
+    employerItems: {
+      ivs: 'Pensione (IVS)',
+      naspi: 'Disoccupazione (NASpI)',
+      training: 'Formazione professionale',
+      tfrGuarantee: 'Fondo di garanzia del TFR',
+      cuaf: 'Assegni al nucleo familiare',
+      sickness: 'Indennità di malattia',
+      maternity: 'Maternità',
+      cigo: 'Cassa integrazione ordinaria',
+      fis: 'Fondo di integrazione salariale',
+      cigs: 'Cassa integrazione straordinaria',
+      inail: 'Assicurazione INAIL',
+      tfr: 'TFR accantonato',
+      healthFund: 'Sanità integrativa',
+      bilateralBody: 'Ente bilaterale',
+    } as Record<EmployerCostItemKey, string>,
     regionalSourceTitle: 'Addizionali regionali 2026',
     regionalSourceMeta: 'MEF · 21 giurisdizioni · aggiornato ' + REGIONAL_DATE_IT,
     municipalDatasetTitle: 'Registro addizionali comunali',
@@ -325,6 +372,46 @@ const COPY = {
     incomeTaxRates: '23 · 33 · 43%',
     standardScope:
       'Standard case: permanent private employee with no dependants or other income. Severance pay, welfare, bonuses and fringe benefits are excluded.',
+    employerTitle: 'From employer cost to take-home pay.',
+    employerIntro:
+      'The same salary from the other side: what the company spends, and how much of it reaches the payslip.',
+    employerSector: 'Sector',
+    employerSectorCommerce: 'Retail and services',
+    employerSectorIndustry: 'Manufacturing',
+    employerSize: 'Company size',
+    employerSizeUpTo5: 'Up to 5 employees',
+    employerSizeFrom6to15: '6 to 15 employees',
+    employerSizeOver15: 'Over 15 employees',
+    employerTotal: 'Employer cost',
+    employerMultiplier: 'times the gross salary',
+    employerNetShare: 'Reaches the employee',
+    employerCostPerNet: 'of cost per euro of take-home pay',
+    employerGrossRow: 'Gross salary',
+    employerInpsTotal: 'INPS contributions paid by the employer',
+    employerReconstructed: 'reconstructed',
+    employerBarNet: 'Take-home pay',
+    employerBarEmployee: 'Employee tax and contributions',
+    employerBarEmployer: 'Employer charges',
+    employerConfidenceNote:
+      'Items marked “reconstructed” come from the last analytical INPS table still available, updated by hand with the later reforms: a declared estimate, not a transcription. Supplementary pensions, bonuses, welfare and job-specific INAIL rates are out of scope.',
+    employerRateMismatch:
+      'In this scenario the employee also pays their share of the wage integration fund: {rate} instead of the 9.19% used for the take-home figure above, which is therefore slightly optimistic.',
+    employerItems: {
+      ivs: 'Pension (IVS)',
+      naspi: 'Unemployment (NASpI)',
+      training: 'Vocational training',
+      tfrGuarantee: 'Severance guarantee fund',
+      cuaf: 'Family allowances',
+      sickness: 'Sickness benefit',
+      maternity: 'Maternity',
+      cigo: 'Short-time work fund (CIGO)',
+      fis: 'Wage integration fund (FIS)',
+      cigs: 'Extraordinary short-time work (CIGS)',
+      inail: 'INAIL insurance',
+      tfr: 'Severance accrual (TFR)',
+      healthFund: 'Supplementary health fund',
+      bilateralBody: 'Bilateral body',
+    } as Record<EmployerCostItemKey, string>,
     regionalSourceTitle: '2026 regional surtaxes',
     regionalSourceMeta: 'MEF · 21 jurisdictions · updated ' + REGIONAL_DATE_EN,
     municipalDatasetTitle: 'Municipal surtax register',
@@ -761,6 +848,8 @@ function App() {
   const [detailsOpen, setDetailsOpen] = useState(() =>
     typeof window === 'undefined' ? true : window.matchMedia('(min-width: 781px)').matches,
   )
+  const [employerSector, setEmployerSector] = useState<EmployerSector>('commerce')
+  const [employerSize, setEmployerSize] = useState<EmployerSize>('upTo5')
 
   const copy = COPY[language]
   const locale = language === 'it' ? 'it-IT' : 'en-IE'
@@ -796,6 +885,15 @@ function App() {
       }),
     [locale],
   )
+  const contributionRate = useMemo(
+    () =>
+      new Intl.NumberFormat(locale, {
+        style: 'percent',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 3,
+      }),
+    [locale],
+  )
   const compactNumber = useMemo(
     () => new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }),
     [locale],
@@ -810,6 +908,24 @@ function App() {
       ),
     [calculatedMunicipality, calculatedPayPeriods, calculatedSalary],
   )
+  const employerItemNote = (entry: { rate: number | null; confidence: string }) =>
+    [
+      entry.rate === null ? null : contributionRate.format(entry.rate),
+      entry.confidence === 'reconstructed' ? copy.employerReconstructed : null,
+    ]
+      .filter(Boolean)
+      .join(' · ')
+
+  const employerCost = useMemo(
+    () =>
+      calculateEmployerCost(result.grossAnnualSalary, {
+        sector: employerSector,
+        size: employerSize,
+      }),
+    [employerSector, employerSize, result.grossAnnualSalary],
+  )
+  const employmentSummary = summariseEmploymentCost(result.annualNet, employerCost)
+
   // Sempre RAL + 1.000: il motore non ha un tetto, il limite di 120.000 vale solo per l'input.
   const marginalResult = useMemo(
     () =>
@@ -1430,6 +1546,143 @@ function App() {
                 </dl>
                 <p>{copy.standardScope}</p>
               </aside>
+            </div>
+            <div className="employer-card">
+              <div className="employer-heading">
+                <div>
+                  <h3 id="employer-title">{copy.employerTitle}</h3>
+                  <p>{copy.employerIntro}</p>
+                </div>
+                <div className="employer-controls">
+                  <label>
+                    <span>{copy.employerSector}</span>
+                    <select
+                      value={employerSector}
+                      onChange={(event) =>
+                        setEmployerSector(event.currentTarget.value as EmployerSector)
+                      }
+                    >
+                      <option value="commerce">{copy.employerSectorCommerce}</option>
+                      <option value="industry">{copy.employerSectorIndustry}</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>{copy.employerSize}</span>
+                    <select
+                      value={employerSize}
+                      onChange={(event) =>
+                        setEmployerSize(event.currentTarget.value as EmployerSize)
+                      }
+                    >
+                      <option value="upTo5">{copy.employerSizeUpTo5}</option>
+                      <option value="from6to15">{copy.employerSizeFrom6to15}</option>
+                      <option value="over15">{copy.employerSizeOver15}</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div className="employer-figures">
+                <div>
+                  <span>{copy.employerTotal}</span>
+                  <strong>{preciseCurrency.format(employerCost.totalCost)}</strong>
+                  <small>
+                    {employerCost.costMultiplier.toLocaleString(locale, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{' '}
+                    {copy.employerMultiplier}
+                  </small>
+                </div>
+                <div>
+                  <span>{copy.employerNetShare}</span>
+                  <strong>{percent.format(employmentSummary.netShareOfCost)}</strong>
+                  <small>
+                    {preciseCurrency.format(employmentSummary.costPerNetEuro)}{' '}
+                    {copy.employerCostPerNet}
+                  </small>
+                </div>
+              </div>
+
+              <div className="employer-bar">
+                {(
+                  [
+                    ['net', copy.employerBarNet, result.annualNet],
+                    [
+                      'employee',
+                      copy.employerBarEmployee,
+                      result.grossAnnualSalary - result.annualNet,
+                    ],
+                    [
+                      'employer',
+                      copy.employerBarEmployer,
+                      employerCost.totalCost - result.grossAnnualSalary,
+                    ],
+                  ] as const
+                ).map(([key, label, amount]) => (
+                  <span
+                    key={key}
+                    className={'employer-bar__part employer-bar__part--' + key}
+                    style={{ width: (amount / employerCost.totalCost) * 100 + '%' }}
+                    title={label + ' · ' + preciseCurrency.format(amount)}
+                  >
+                    <b>{percent.format(amount / employerCost.totalCost)}</b>
+                    <em>{label}</em>
+                  </span>
+                ))}
+              </div>
+
+              <div className="employer-rows">
+                <BreakdownRow
+                  label={copy.employerGrossRow}
+                  amount={result.grossAnnualSalary}
+                  formatCurrency={preciseCurrency.format}
+                  tone="neutral"
+                />
+                {employerCost.inpsItems.map((entry) => (
+                  <BreakdownRow
+                    key={entry.key}
+                    label={copy.employerItems[entry.key]}
+                    note={employerItemNote(entry)}
+                    amount={entry.amount}
+                    formatCurrency={preciseCurrency.format}
+                    tone="neutral"
+                  />
+                ))}
+                <div className="taxable-row">
+                  <span>{copy.employerInpsTotal}</span>
+                  <strong>{preciseCurrency.format(employerCost.inpsTotal)}</strong>
+                </div>
+                {[employerCost.insuranceItem, employerCost.severanceItem, ...employerCost.contractualItems].map(
+                  (entry) => (
+                    <BreakdownRow
+                      key={entry.key}
+                      label={copy.employerItems[entry.key]}
+                      note={employerItemNote(entry)}
+                      amount={entry.amount}
+                      formatCurrency={preciseCurrency.format}
+                      tone="neutral"
+                    />
+                  ),
+                )}
+                <BreakdownRow
+                  label={copy.employerTotal}
+                  amount={employerCost.totalCost}
+                  formatCurrency={preciseCurrency.format}
+                  tone="neutral"
+                  strong
+                />
+              </div>
+
+              {employerCost.matchesEngineEmployeeRate ? null : (
+                <p className="employer-warning">
+                  {copy.employerRateMismatch.replace(
+                    '{rate}',
+                    contributionRate.format(employerCost.impliedEmployeeRate),
+                  )}
+                </p>
+              )}
+              <p className="employer-note">{copy.employerConfidenceNote}</p>
             </div>
           </div>
         </section>

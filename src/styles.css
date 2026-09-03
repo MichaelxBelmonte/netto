@@ -1737,6 +1737,162 @@ svg {
   border-top: 1px solid var(--ink);
 }
 
+.employer-card {
+  margin-top: 24px;
+  padding: 32px;
+  background: var(--white);
+  border: 1px solid var(--ink);
+}
+
+.employer-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 26px;
+}
+
+.employer-heading h3 {
+  margin: 0 0 6px;
+  font-size: clamp(20px, 2.4vw, 26px);
+  letter-spacing: -0.02em;
+}
+
+.employer-heading p {
+  max-width: 46ch;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.employer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.employer-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.employer-controls select {
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+}
+
+.employer-controls select:focus-visible {
+  outline: 3px solid var(--orange-ink);
+  outline-offset: 2px;
+}
+
+.employer-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.employer-figures span {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.employer-figures strong {
+  display: block;
+  margin-top: 4px;
+  font-size: clamp(28px, 3.6vw, 38px);
+  letter-spacing: -0.03em;
+}
+
+.employer-figures small {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.employer-bar {
+  display: flex;
+  width: 100%;
+  height: 62px;
+  margin-bottom: 24px;
+  overflow: hidden;
+  border: 1px solid var(--ink);
+}
+
+.employer-bar__part {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 10px;
+  overflow: hidden;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.employer-bar__part b {
+  font-size: 15px;
+}
+
+.employer-bar__part em {
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+  opacity: 0.78;
+}
+
+.employer-bar__part--net {
+  color: var(--white);
+  background: var(--ink);
+}
+
+.employer-bar__part--employee {
+  background: var(--paper);
+  border-inline: 1px solid var(--ink);
+}
+
+.employer-bar__part--employer {
+  color: var(--white);
+  background: var(--orange-ink);
+}
+
+.employer-card .breakdown-row--strong {
+  margin-bottom: 0;
+}
+
+.employer-warning,
+.employer-note {
+  margin: 20px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.employer-warning {
+  padding: 14px 16px;
+  color: var(--ink);
+  background: var(--paper);
+  border-left: 3px solid var(--orange-ink);
+}
+
 .sources-section {
   padding-block: 92px;
   color: var(--ink);
@@ -2254,8 +2410,34 @@ svg {
   }
 
   .reconciliation-card,
-  .rules-card {
+  .rules-card,
+  .employer-card {
     padding: 24px 20px;
+  }
+
+  /* Su schermo stretto i tre segmenti non hanno spazio per le etichette: la barra diventa verticale. */
+  .employer-bar {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .employer-bar__part {
+    width: 100% !important;
+    min-height: 46px;
+    padding: 8px 12px;
+  }
+
+  .employer-bar__part--employee {
+    border-inline: 0;
+    border-block: 1px solid var(--ink);
+  }
+
+  .employer-controls {
+    width: 100%;
+  }
+
+  .employer-controls label {
+    flex: 1 1 140px;
   }
 
   .card-heading h3,

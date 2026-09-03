@@ -15,6 +15,7 @@ Il progetto nasce per il task del ruolo AI Builder di Jet HR. La scelta distinti
 - confronta la stessa RAL tra città e rende visibile l’effetto della fiscalità locale
 - offre un atlante fiscale interattivo, visibile anche senza aver scelto un Comune
 - mostra quanto resta dei successivi 1.000 € lordi
+- affianca il costo per l’azienda: contributi a suo carico, INAIL e TFR per settore e dimensione, e la quota del costo che arriva netta al dipendente
 - collega norme, dataset e scheda MEF del Comune selezionato
 - genera un link condivisibile del calcolo (`?ral=35000&comune=F205&mensilita=13`, con `&lang=en` per l’inglese)
 - funziona in italiano e inglese, con un flusso mobile dedicato
@@ -45,7 +46,9 @@ La pipeline riproducibile è descritta in [docs/DATA.md](docs/DATA.md). Le formu
 
 Il caso calcolato è un dipendente del settore privato, a tempo indeterminato, impiegato per l’intero anno e senza familiari a carico, altri redditi o detrazioni personali. Il risultato è un netto per competenza annuale: il cedolino distribuisce le stesse somme in modo diverso (tredicesima senza detrazioni, addizionali in acconto e saldo, conguaglio).
 
-La residenza non è fissata a Milano: l’utente sceglie il Comune. Restano esclusi TFR, premi, welfare, fringe benefit, contribuzione datoriale, fondi e aliquote previdenziali speciali (il 9,19% è la regola generale; nelle aziende soggette a CIGS è 9,49%). Le regole locali legate a condizioni personali sono segnalate come casi speciali e calcolate sul profilo standard.
+La residenza non è fissata a Milano: l’utente sceglie il Comune. Restano esclusi premi, welfare, fringe benefit, fondi e aliquote previdenziali speciali (il 9,19% è la regola generale; nelle aziende soggette a CIGS è 9,49%). Le regole locali legate a condizioni personali sono segnalate come casi speciali e calcolate sul profilo standard.
+
+Il costo azienda è calcolato a parte, su RAL 35.000 € vale 48.078 € per un impiegato del commercio in un’azienda da 6 a 15 dipendenti. Le aliquote a carico del datore non sono però pubblicate dall’INPS in una tabella analitica aggiornata: le voci ricostruite dall’ultima disponibile sono marcate come tali nell’interfaccia, e gli esoneri contributivi non sono modellati.
 
 ## Avvio e verifica
 
@@ -77,6 +80,7 @@ npm run map:update
 
 - `src/lib/tax.ts`: motore nazionale, funzione pura senza dipendenze dalla UI
 - `src/lib/localTaxes.ts`: aliquote regionali, ricerca per rilevanza e calcolo comunale
+- `src/lib/employerCost.ts`: costo del lavoro a carico dell’azienda, con la fonte e il livello di confidenza di ogni voce
 - `src/components/TaxMap.tsx`: proiezione SVG, distribuzione e selezione territoriale
 - `src/data/`: snapshot fiscali, metadati e confini ISTAT semplificati
 - `scripts/build-tax-data.mjs`: download, normalizzazione, validazione degli scaglioni, regola 2025 e quality flags
